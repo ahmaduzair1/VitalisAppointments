@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'core/app_colors.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+
+import 'core/theme/app_theme.dart';
+import 'providers/theme_provider.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
-  runApp(const VitalisApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => ThemeProvider(),
+      child: const VitalisApp(),
+    ),
+  );
 }
 
 class VitalisApp extends StatelessWidget {
@@ -12,17 +27,19 @@ class VitalisApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Vitalis Appointments',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
-        primaryColor: AppColors.primary,
-        textTheme: GoogleFonts.interTextTheme(Theme.of(context).textTheme),
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
-        useMaterial3: true,
-      ),
-      home: const SplashScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, _) {
+        return MaterialApp(
+          title: 'Vitalis Appointments',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeProvider.themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 300),
+          themeAnimationCurve: Curves.easeInOut,
+          home: const SplashScreen(),
+        );
+      },
     );
   }
 }

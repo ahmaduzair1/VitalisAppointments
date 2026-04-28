@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
+import '../core/theme/app_colors.dart';
 import 'home_dashboard.dart';
 import 'my_appointments_screen.dart';
 import 'alerts_screen.dart';
@@ -23,20 +23,32 @@ class _MainTabNavigatorState extends State<MainTabNavigator> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textLight,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Bookings'),
-          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Alerts'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: KeyedSubtree(
+          key: ValueKey(_currentIndex),
+          child: _screens[_currentIndex],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colors.divider.withAlpha(77), width: 0.5)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Bookings'),
+            BottomNavigationBarItem(icon: Icon(Icons.notifications_rounded), label: 'Alerts'),
+            BottomNavigationBarItem(icon: Icon(Icons.person_rounded), label: 'Profile'),
+          ],
+        ),
       ),
     );
   }

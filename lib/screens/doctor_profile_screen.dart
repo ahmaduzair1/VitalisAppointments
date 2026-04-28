@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../core/app_colors.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../core/theme/app_colors.dart';
+import '../core/constants/app_spacing.dart';
+import '../core/constants/page_transitions.dart';
+import '../widgets/stat_card.dart';
+import '../widgets/vitalis_button.dart';
 import 'book_appointment_screen.dart';
 
 class DoctorProfileScreen extends StatelessWidget {
@@ -9,6 +13,8 @@ class DoctorProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
       appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       extendBodyBehindAppBar: true,
@@ -16,77 +22,90 @@ class DoctorProfileScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              height: 350,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                image: DecorationImage(image: NetworkImage(doctor['image']), fit: BoxFit.cover),
-              ),
+            // ── Hero image with gradient overlay ─────────
+            Stack(
+              children: [
+                Container(
+                  height: 320,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    image: DecorationImage(image: NetworkImage(doctor['image']), fit: BoxFit.cover),
+                  ),
+                ),
+                // Gradient overlay for text readability
+                Container(
+                  height: 320,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, colors.background.withAlpha(230)],
+                    ),
+                  ),
+                ),
+              ],
             ),
+            // ── Doctor info ──────────────────────────────
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Verified badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(100)),
-                    child: const Text('VERIFIED PROFESSIONAL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(doctor['name'], style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold)),
-                  Text(doctor['specialty'], style: const TextStyle(fontSize: 16, color: AppColors.primary)),
-                  const SizedBox(height: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: colors.success,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                    ),
+                    child: const Text('VERIFIED PROFESSIONAL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5)),
+                  ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0, duration: 400.ms),
+                  const SizedBox(height: 14),
+                  Text(doctor['name'], style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: colors.textPrimary))
+                      .animate(delay: 100.ms).fadeIn(duration: 400.ms),
+                  const SizedBox(height: 4),
+                  Text(doctor['specialty'], style: TextStyle(fontSize: 16, color: colors.primary, fontWeight: FontWeight.w500))
+                      .animate(delay: 150.ms).fadeIn(duration: 400.ms),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // ── Stat cards ─────────────────────────
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _buildStatCard(Icons.star, doctor['rating'].toString(), '${doctor['reviews']} Reviews'),
-                      _buildStatCard(Icons.workspace_premium, doctor['experience'].split(' ')[0], 'Experience'),
-                      _buildStatCard(Icons.people, doctor['patients'], 'Patients'),
+                      StatCard(icon: Icons.star_rounded, value: doctor['rating'].toString(), label: '${doctor['reviews']} Reviews'),
+                      const SizedBox(width: AppSpacing.sm + 4),
+                      StatCard(icon: Icons.workspace_premium_rounded, value: doctor['experience'].split(' ')[0], label: 'Experience'),
+                      const SizedBox(width: AppSpacing.sm + 4),
+                      StatCard(icon: Icons.people_rounded, value: doctor['patients'], label: 'Patients'),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  const Text('About', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ).animate(delay: 250.ms).fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0, duration: 500.ms),
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // ── About section ──────────────────────
+                  Text('About', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                   const SizedBox(height: 12),
                   Text(
                     '${doctor['name']} is a board-certified specialist focusing on preventive care and lifestyle-based interventions. Known for a patient-first approach.',
-                    style: const TextStyle(color: AppColors.textLight, height: 1.5),
+                    style: TextStyle(color: colors.textSecondary, height: 1.6, fontSize: 14),
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
+      // ── Bottom CTA bar ─────────────────────────────────
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Colors.black12))),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: colors.card,
+          border: Border(top: BorderSide(color: colors.divider.withAlpha(77), width: 0.5)),
+        ),
         child: SafeArea(
-          child: ElevatedButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BookAppointmentScreen(doctor: doctor))),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-            ),
-            child: const Text('Book Appointment →', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          child: VitalisButton(
+            label: 'Book Appointment →',
+            onPressed: () => Navigator.push(context, PageTransitions.slideRight(BookAppointmentScreen(doctor: doctor))),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(IconData icon, String value, String label) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          Icon(icon, color: AppColors.primary),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          Text(label, style: const TextStyle(color: AppColors.textLight, fontSize: 12)),
-        ],
       ),
     );
   }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "697534615822",
+    "project_id": "viatlis-appointments",
+    "storage_bucket": "viatlis-appointments.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:697534615822:android:31a45d6983e1bc5479c75f",
+        "android_client_info": {
+          "package_name": "Riphahmalakand.example.vitalis_appointments"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAuNKRhg2TijDoTUJRqn50Tjy_0izktSs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

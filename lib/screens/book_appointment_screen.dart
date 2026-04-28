@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import '../core/app_colors.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../core/theme/app_colors.dart';
+import '../core/constants/app_spacing.dart';
+import '../widgets/vitalis_card.dart';
+import '../widgets/vitalis_button.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   final Map<String, dynamic> doctor;
@@ -18,64 +22,78 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Appointment'), backgroundColor: AppColors.background, elevation: 0),
+      appBar: AppBar(title: const Text('Book Appointment')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            // ── Doctor info card ─────────────────────────
+            VitalisCard(
               child: Row(
                 children: [
-                  CircleAvatar(radius: 30, backgroundImage: NetworkImage(widget.doctor['image'])),
-                  const SizedBox(width: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.primary.withAlpha(51), width: 2),
+                    ),
+                    child: CircleAvatar(radius: 28, backgroundImage: NetworkImage(widget.doctor['image']), backgroundColor: colors.inputFill),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(widget.doctor['name'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                        Text(widget.doctor['specialty'], style: const TextStyle(color: AppColors.textLight)),
+                        Text(widget.doctor['name'], style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: colors.textPrimary)),
+                        const SizedBox(height: 4),
+                        Text(widget.doctor['specialty'], style: TextStyle(color: colors.textSecondary, fontSize: 13)),
                       ],
                     ),
-                  )
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 32),
-            const Text('Select Date', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            ).animate().fadeIn(duration: 400.ms),
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── Date selector ────────────────────────────
+            Text('Select Date', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+            const SizedBox(height: AppSpacing.md),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: List.generate(4, (index) {
                 bool isSelected = selectedDateIndex == index;
                 return GestureDetector(
                   onTap: () => setState(() => selectedDateIndex = index),
-                  child: Container(
-                    width: 70,
-                    height: 90,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 72,
+                    height: 92,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: isSelected ? null : Border.all(color: Colors.grey.shade200),
+                      color: isSelected ? colors.primary : colors.card,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
+                      border: isSelected ? null : Border.all(color: colors.divider),
+                      boxShadow: isSelected ? [BoxShadow(color: colors.primary.withAlpha(51), blurRadius: 12, offset: const Offset(0, 4))] : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(days[index], style: TextStyle(color: isSelected ? Colors.white70 : AppColors.textLight)),
+                        Text(days[index], style: TextStyle(color: isSelected ? Colors.white70 : colors.textSecondary, fontSize: 13)),
                         const SizedBox(height: 8),
-                        Text(dates[index], style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : AppColors.textDark)),
+                        Text(dates[index], style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : colors.textPrimary)),
                       ],
                     ),
                   ),
                 );
               }),
-            ),
-            const SizedBox(height: 32),
-            const Text('Morning Slots', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── Time selector ────────────────────────────
+            Text('Morning Slots', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -83,32 +101,40 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 bool isSelected = selectedTimeIndex == index;
                 return GestureDetector(
                   onTap: () => setState(() => selectedTimeIndex = index),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppColors.primary.withOpacity(0.1) : Colors.white,
-                      borderRadius: BorderRadius.circular(100),
-                      border: Border.all(color: isSelected ? AppColors.primary : Colors.grey.shade200),
+                      color: isSelected ? colors.primary.withAlpha(26) : colors.card,
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+                      border: Border.all(color: isSelected ? colors.primary : colors.divider, width: isSelected ? 1.5 : 1),
                     ),
-                    child: Text(times[index], style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textDark, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      times[index],
+                      style: TextStyle(color: isSelected ? colors.primary : colors.textPrimary, fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
                   ),
                 );
               }),
-            ),
+            ).animate(delay: 250.ms).fadeIn(duration: 400.ms),
           ],
         ),
       ),
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(24),
-        color: Colors.white,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: colors.card,
+          border: Border(top: BorderSide(color: colors.divider.withAlpha(77), width: 0.5)),
+        ),
         child: SafeArea(
-          child: ElevatedButton(
+          child: VitalisButton(
+            label: 'Confirm Booking',
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Appointment Booked Successfully!')));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Appointment Booked Successfully!')),
+              );
               Navigator.popUntil(context, (route) => route.isFirst);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, minimumSize: const Size(double.infinity, 56)),
-            child: const Text('Confirm Booking', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ),
         ),
       ),

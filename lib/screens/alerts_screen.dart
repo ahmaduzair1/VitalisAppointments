@@ -1,53 +1,57 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../core/app_colors.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../core/theme/app_colors.dart';
+import '../core/constants/app_spacing.dart';
+import '../widgets/alert_card.dart';
 
 class AlertsScreen extends StatelessWidget {
   const AlertsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+
     return SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.screenPadding,
         children: [
-          Text('Alerts', style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text('Stay updated with your latest health activities.', style: TextStyle(color: AppColors.textLight)),
-          const SizedBox(height: 32),
-          const Text('TODAY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textLight)),
-          const SizedBox(height: 16),
-          _buildAlertCard(Icons.calendar_today, 'Appointment Reminder', 'Your session with Dr. Aris Thorne is scheduled for tomorrow at 10:30 AM.', true),
-          const SizedBox(height: 16),
-          _buildAlertCard(Icons.chat_bubble, 'New Message', '"The blood work results are in. Everything looks stable..."', false),
-        ],
-      ),
-    );
-  }
+          Text(
+            'Alerts',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: colors.textPrimary),
+          ).animate().fadeIn(duration: 400.ms),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Stay updated with your latest health activities.',
+            style: TextStyle(color: colors.textSecondary, fontSize: 14),
+          ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
+          const SizedBox(height: AppSpacing.xl),
 
-  Widget _buildAlertCard(IconData icon, String title, String desc, bool isPrimary) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border(left: BorderSide(color: isPrimary ? AppColors.primary : AppColors.success, width: 4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: isPrimary ? AppColors.primary.withOpacity(0.1) : AppColors.success.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, color: isPrimary ? AppColors.primary : AppColors.success)),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(desc, style: const TextStyle(color: AppColors.textLight, height: 1.4)),
-              ],
+          // ── Section label ──────────────────────────────
+          Text(
+            'TODAY',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: colors.textSecondary,
+              letterSpacing: 1,
             ),
-          )
+          ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
+          const SizedBox(height: AppSpacing.md),
+
+          // ── Alert cards ────────────────────────────────
+          const AlertCard(
+            icon: Icons.calendar_today_rounded,
+            title: 'Appointment Reminder',
+            description: 'Your session with Dr. Aris Thorne is scheduled for tomorrow at 10:30 AM.',
+            isPrimary: true,
+          ).animate(delay: 300.ms).fadeIn(duration: 400.ms).slideX(begin: -0.05, end: 0, duration: 400.ms),
+
+          const AlertCard(
+            icon: Icons.chat_bubble_rounded,
+            title: 'New Message',
+            description: '"The blood work results are in. Everything looks stable..."',
+            isPrimary: false,
+          ).animate(delay: 420.ms).fadeIn(duration: 400.ms).slideX(begin: -0.05, end: 0, duration: 400.ms),
         ],
       ),
     );
