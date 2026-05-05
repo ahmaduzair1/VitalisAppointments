@@ -1,25 +1,54 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
 
-/// Reusable "Title — Action" row header used across screens.
+/// Reusable "Title — Action" row header.
 class SectionHeader extends StatelessWidget {
   final String title;
   final String? actionText;
   final VoidCallback? onAction;
 
-  const SectionHeader({super.key, required this.title, this.actionText, this.onAction});
+  const SectionHeader({
+    super.key,
+    required this.title,
+    this.actionText,
+    this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: colors.textPrimary)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
         if (actionText != null)
           GestureDetector(
             onTap: onAction,
-            child: Text(actionText!, style: TextStyle(color: colors.primary, fontWeight: FontWeight.w600, fontSize: 14)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  actionText!,
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 16,
+                  color: theme.colorScheme.primary,
+                ),
+              ],
+            ),
           ),
       ],
     );

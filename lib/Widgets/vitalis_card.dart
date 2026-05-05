@@ -1,48 +1,61 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
-import '../core/constants/app_spacing.dart';
 
-/// A theme-aware card with soft shadow (light) or elevated surface (dark).
+/// A premium theme-aware card with soft shadows and smooth animations.
 class VitalisCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  final double? borderRadius;
+  final double borderRadius;
   final Color? color;
-  final Border? border;
   final VoidCallback? onTap;
+  final bool hasShadow;
 
   const VitalisCard({
     super.key,
     required this.child,
     this.padding,
     this.margin,
-    this.borderRadius,
+    this.borderRadius = 16,
     this.color,
-    this.border,
     this.onTap,
+    this.hasShadow = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     final card = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
-      padding: padding ?? const EdgeInsets.all(AppSpacing.md),
+      padding: padding ?? const EdgeInsets.all(16),
       margin: margin,
       decoration: BoxDecoration(
-        color: color ?? colors.card,
-        borderRadius: BorderRadius.circular(borderRadius ?? AppSpacing.radiusLg),
-        border: border ?? (isDark ? Border.all(color: colors.divider.withAlpha(51), width: 0.5) : null),
-        boxShadow: isDark ? null : AppSpacing.cardShadowLight,
+        color: color ?? theme.cardColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: isDark
+            ? Border.all(
+                color: theme.colorScheme.outline.withOpacity(0.3), width: 1)
+            : null,
+        boxShadow: hasShadow && !isDark
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
       ),
       child: child,
     );
 
     if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: card);
+      return GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: card,
+      );
     }
     return card;
   }

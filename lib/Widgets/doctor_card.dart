@@ -1,77 +1,224 @@
 import 'package:flutter/material.dart';
-import '../core/theme/app_colors.dart';
-import '../core/constants/app_spacing.dart';
 import 'vitalis_card.dart';
 
-/// Reusable doctor card used on home dashboard and doctor listings.
+/// Premium doctor card with avatar, specialty, rating, and availability.
 class DoctorCard extends StatelessWidget {
   final Map<String, dynamic> doctor;
   final VoidCallback? onTap;
-  final bool showBookButton;
+  final bool isCompact;
 
-  const DoctorCard({super.key, required this.doctor, this.onTap, this.showBookButton = false});
+  const DoctorCard({
+    super.key,
+    required this.doctor,
+    this.onTap,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
-    return VitalisCard(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    if (isCompact) {
+      return _buildCompactCard(context, theme, cs);
+    }
+    return _buildFullCard(context, theme, cs);
+  }
+
+  /// Horizontal scrolling compact card (for "Top Doctors" row).
+  Widget _buildCompactCard(
+      BuildContext context, ThemeData theme, ColorScheme cs) {
+    return GestureDetector(
       onTap: onTap,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: colors.primary.withAlpha(51), width: 2)),
-                child: CircleAvatar(radius: 28, backgroundImage: NetworkImage(doctor['image']), backgroundColor: colors.inputFill),
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: theme.brightness == Brightness.dark
+              ? Border.all(color: cs.outline.withValues(alpha: 0.3))
+              : null,
+          boxShadow: theme.brightness == Brightness.light
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          children: [
+            Hero(
+              tag: 'doctor_avatar_${doctor['name']}',
+              child: CircleAvatar(
+                radius: 32,
+                backgroundImage: NetworkImage(doctor['image']),
+                backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.08),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(child: Text(doctor['name'], style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: colors.textPrimary), overflow: TextOverflow.ellipsis)),
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(Icons.star_rounded, color: colors.accent, size: 18),
-                          const SizedBox(width: 2),
-                          Text('${doctor['rating']}', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: colors.textPrimary)),
-                        ]),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(doctor['specialty'], style: TextStyle(color: colors.textSecondary, fontSize: 13)),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: colors.success.withAlpha(26), borderRadius: BorderRadius.circular(AppSpacing.radiusSm)),
-                        child: Text('Verified', style: TextStyle(color: colors.success, fontSize: 11, fontWeight: FontWeight.w600)),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(doctor['experience'], style: TextStyle(fontSize: 12, color: colors.textSecondary)),
-                    ]),
-                  ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              doctor['name'],
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: cs.onSurface,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              doctor['specialty'],
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '${doctor['rating']}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Full-width list card (for "Available Today" / Doctor List).
+  Widget _buildFullCard(
+      BuildContext context, ThemeData theme, ColorScheme cs) {
+    final bool isAvailable = doctor['availableToday'] == true;
+
+    return VitalisCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      onTap: onTap,
+      child: Row(
+        children: [
+          // Avatar
+          Hero(
+            tag: 'doctor_avatar_${doctor['name']}',
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: cs.outline.withValues(alpha: 0.3),
+                  width: 2,
                 ),
               ),
-            ],
-          ),
-          if (showBookButton) ...[
-            const SizedBox(height: AppSpacing.md),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: colors.inputFill, borderRadius: BorderRadius.circular(AppSpacing.radiusMd)),
-              child: Row(children: [
-                Icon(Icons.calendar_month_rounded, size: 16, color: colors.textSecondary),
-                const SizedBox(width: AppSpacing.sm),
-                Text('Next Available: Today, 2:30 PM', style: TextStyle(color: colors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-              ]),
+              child: CircleAvatar(
+                radius: 30,
+                backgroundImage: NetworkImage(doctor['image']),
+                backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.08),
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            SizedBox(width: double.infinity, child: ElevatedButton(onPressed: onTap, child: const Text('Book Consultation'))),
-          ],
+          ),
+          const SizedBox(width: 16),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        doctor['name'],
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: cs.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isAvailable
+                            ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                            : cs.onSurfaceVariant.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isAvailable ? 'Available' : 'Busy',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isAvailable
+                              ? const Color(0xFF10B981)
+                              : cs.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  doctor['specialty'],
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(Icons.star_rounded,
+                        color: const Color(0xFFFBBF24), size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${doctor['rating']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '(${doctor['reviews']})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '\$${doctor['fee']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

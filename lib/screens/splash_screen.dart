@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../core/theme/app_colors.dart';
 import '../core/constants/page_transitions.dart';
 import 'onboarding_screen.dart';
 
@@ -15,67 +14,89 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
-        Navigator.pushReplacement(context, PageTransitions.fade(const OnboardingScreen()));
+        Navigator.pushReplacement(
+          context,
+          PageTransitions.fade(const OnboardingScreen()),
+        );
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = AppColors.of(context);
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
-      backgroundColor: colors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Animated logo container
+            // ── Animated logo ─────────────────────────────
             Container(
-              padding: const EdgeInsets.all(28),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colors.card,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    cs.primary,
+                    cs.primary.withOpacity(0.8),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.primary.withAlpha(38),
-                    blurRadius: 30,
-                    offset: const Offset(0, 8),
+                    color: cs.primary.withOpacity(0.3),
+                    blurRadius: 32,
+                    offset: const Offset(0, 12),
                   ),
                 ],
               ),
-              child: Icon(Icons.favorite_rounded, color: colors.primary, size: 64),
+              child: Icon(
+                Icons.favorite_rounded,
+                color: cs.onPrimary,
+                size: 56,
+              ),
             )
                 .animate()
                 .scale(
-                  begin: const Offset(0.5, 0.5),
+                  begin: const Offset(0.4, 0.4),
                   end: const Offset(1.0, 1.0),
-                  duration: 600.ms,
+                  duration: 700.ms,
                   curve: Curves.easeOutBack,
                 )
-                .fadeIn(duration: 400.ms),
-            const SizedBox(height: 28),
-            // Brand name with staggered animation
-            RichText(
-              text: TextSpan(
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: colors.textPrimary),
-                children: [
-                  TextSpan(text: 'Vitalis', style: TextStyle(color: colors.primary)),
-                  const TextSpan(text: ' Appointments'),
-                ],
+                .fadeIn(duration: 500.ms),
+            const SizedBox(height: 32),
+
+            // ── Brand name ────────────────────────────────
+            Text(
+              'Vitalis',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.w800,
+                color: cs.primary,
+                letterSpacing: -0.5,
               ),
             )
-                .animate(delay: 300.ms)
+                .animate(delay: 400.ms)
                 .fadeIn(duration: 500.ms)
                 .slideY(begin: 0.3, end: 0, duration: 500.ms, curve: Curves.easeOut),
-            const SizedBox(height: 10),
+
+            const SizedBox(height: 8),
+
             Text(
-              'Your Clinical Sanctuary',
-              style: TextStyle(color: colors.textSecondary, fontSize: 16, fontWeight: FontWeight.w400),
+              'Your Health, Simplified',
+              style: TextStyle(
+                color: cs.onSurfaceVariant,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0.2,
+              ),
             )
-                .animate(delay: 600.ms)
+                .animate(delay: 700.ms)
                 .fadeIn(duration: 500.ms),
           ],
         ),

@@ -35,7 +35,7 @@ class AppSpacing {
   // ── Card shadow (light mode) ───────────────────────────────
   static List<BoxShadow> get cardShadowLight => [
         BoxShadow(
-          color: const Color(0xFF2563EB).withAlpha(18), // Soft vibrant blue shadow
+          color: const Color(0xFF000000).withAlpha(15), // Neutral soft shadow
           blurRadius: 24,
           offset: const Offset(0, 8),
         ),
