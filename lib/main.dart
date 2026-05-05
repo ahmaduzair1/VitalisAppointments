@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 
-void main() {
+import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_tab_navigator.dart';
+import 'services/auth_service.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ),
   );
+
   runApp(const VitalisApp());
 }
 
 class VitalisApp extends StatelessWidget {
-  static final ValueNotifier<ThemeMode> themeNotifier =
-      ValueNotifier(ThemeMode.system);
+  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
 
   const VitalisApp({super.key});
 
@@ -85,8 +97,7 @@ class VitalisApp extends StatelessWidget {
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -99,8 +110,7 @@ class VitalisApp extends StatelessWidget {
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: const Color(0xFFF3F4F6),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide.none,
@@ -124,10 +134,8 @@ class VitalisApp extends StatelessWidget {
               unselectedItemColor: _textSecondaryLight,
               type: BottomNavigationBarType.fixed,
               elevation: 0,
-              selectedLabelStyle:
-                  TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle:
-                  TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
             dividerColor: const Color(0xFFE5E7EB),
           ),
@@ -171,8 +179,7 @@ class VitalisApp extends StatelessWidget {
                 backgroundColor: _primaryDark,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -185,8 +192,7 @@ class VitalisApp extends StatelessWidget {
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
               fillColor: const Color(0xFF1E293B),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(color: Color(0xFF334155)),
@@ -210,16 +216,43 @@ class VitalisApp extends StatelessWidget {
               unselectedItemColor: _textSecondaryDark,
               type: BottomNavigationBarType.fixed,
               elevation: 0,
-              selectedLabelStyle:
-                  TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle:
-                  TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
             dividerColor: const Color(0xFF334155),
           ),
 
-          home: const SplashScreen(),
+          // Home points to our AuthWrapper
+          home: const AuthWrapper(),
         );
+      },
+    );
+  }
+}
+
+// ── The Traffic Cop (Auth Wrapper) ───────────────────────
+class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = AuthService();
+
+    return StreamBuilder<User?>(
+      stream: authService.authStateChanges,
+      builder: (context, snapshot) {
+        // 1. While checking Firebase, show the Splash Screen
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SplashScreen();
+        }
+
+        // 2. If we have user data, they are logged in! Send to Dashboard.
+        if (snapshot.hasData) {
+          return const MainTabNavigator();
+        }
+
+        // 3. Otherwise, they are logged out. Send to Login Screen.
+        return const LoginScreen();
       },
     );
   }

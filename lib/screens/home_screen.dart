@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // <-- Added this
+import 'package:cloud_firestore/cloud_firestore.dart'; // <-- Added this
+
 import '../core/constants/page_transitions.dart';
 import '../core/mock_data.dart';
 import '../widgets/section_header.dart';
@@ -7,6 +10,8 @@ import '../widgets/category_chip.dart';
 import '../widgets/doctor_card.dart';
 import 'doctor_list_screen.dart';
 import 'doctor_profile_screen.dart';
+import 'alerts_screen.dart';
+import 'profile_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,7 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final cs = theme.colorScheme;
     final topDoctors = MockData.doctors.take(4).toList();
     final availableToday =
-        MockData.doctors.where((d) => d['availableToday'] == true).toList();
+    MockData.doctors.where((d) => d['availableToday'] == true).toList();
+
+    // Grab the currently logged-in user to use their ID for the database lookup
+    final currentUser = FirebaseAuth.instance.currentUser;
 
     return SafeArea(
       child: CustomScrollView(
@@ -49,43 +57,69 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Hello, Sarah 👋',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      // ── NEW: Dynamic Name Fetching ─────────────────
+                      FutureBuilder<DocumentSnapshot>(
+                        future: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUser?.uid)
+                            .get(),
+                        builder: (context, snapshot) {
+                          String firstName = '...'; // Default loading state
+
+                          if (snapshot.hasData && snapshot.data!.exists) {
+                            final userData = snapshot.data!.data() as Map<String, dynamic>;
+                            final fullName = userData['name'] ?? 'Guest';
+                            // Split by space and take the first part to get just the first name
+                            firstName = fullName.split(' ')[0];
+                          }
+
+                          return Text(
+                            'Hello, $firstName 👋',
+                            style: TextStyle(
+                              fontSize: 15,
+                              height: 1.6,
+                              color: cs.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          );
+                        },
                       ),
+                      // ───────────────────────────────────────────────
                       const SizedBox(height: 4),
                       Text(
                         'Vitalis',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 34,
                           fontWeight: FontWeight.w800,
                           color: cs.onSurface,
-                          letterSpacing: -0.5,
+                          letterSpacing: -1.0,
                         ),
                       ),
                     ],
                   ),
                   Row(
                     children: [
-                      _headerIcon(cs, Icons.notifications_none_rounded),
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, PageTransitions.fade(const AlertsScreen())),
+                        child: _headerIcon(cs, Icons.notifications_none_rounded),
+                      ),
                       const SizedBox(width: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                          color: cs.outline.withOpacity(0.5),
-                            width: 2,
+                      GestureDetector(
+                        onTap: () => Navigator.push(context, PageTransitions.fade(const ProfileSettingsScreen())),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: cs.outline.withOpacity(0.5),
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 20,
-                          backgroundImage: const NetworkImage(
-                              'https://i.pravatar.cc/150?img=44'),
-                          backgroundColor: cs.onSurfaceVariant.withOpacity(0.08),
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundImage: const NetworkImage(
+                                'https://i.pravatar.cc/150?img=44'),
+                            backgroundColor: cs.onSurfaceVariant.withOpacity(0.08),
+                          ),
                         ),
                       ),
                     ],
@@ -105,14 +139,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   PageTransitions.fadeSlide(const DoctorListScreen()),
                 ),
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  height: 60,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
-                    color: cs.onSurface.withOpacity(0.04),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: cs.outline.withOpacity(0.5),
-                    ),
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: theme.brightness == Brightness.dark
+                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        : null,
+                    boxShadow: theme.brightness == Brightness.light
+                        ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                        : null,
                   ),
                   child: Row(
                     children: [
@@ -134,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child:
-                            Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 18),
+                        Icon(Icons.tune_rounded, color: cs.onSurfaceVariant, size: 18),
                       ),
                     ],
                   ),
@@ -239,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (context, index) {
+                    (context, index) {
                   final doc = availableToday[index];
                   return DoctorCard(
                     doctor: doc,
@@ -252,10 +295,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       .animate(delay: (400 + index * 100).ms)
                       .fadeIn(duration: 400.ms)
                       .slideY(
-                          begin: 0.08,
-                          end: 0,
-                          duration: 400.ms,
-                          curve: Curves.easeOut);
+                      begin: 0.08,
+                      end: 0,
+                      duration: 400.ms,
+                      curve: Curves.easeOut);
                 },
                 childCount: availableToday.length,
               ),

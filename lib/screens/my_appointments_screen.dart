@@ -34,10 +34,10 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                 Text(
                   'My Appointments',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: 34,
                     fontWeight: FontWeight.w800,
                     color: cs.onSurface,
-                    letterSpacing: -0.5,
+                    letterSpacing: -1.0,
                   ),
                 ).animate().fadeIn(duration: 400.ms),
                 const SizedBox(height: 8),
@@ -46,6 +46,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                   style: TextStyle(
                     color: cs.onSurfaceVariant,
                     fontSize: 15,
+                    height: 1.6,
                   ),
                 ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
               ],
@@ -102,7 +103,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
                     itemCount: appointments.length,
                     itemBuilder: (context, index) {
                       final apt = appointments[index];
-                      return _buildAppointmentCard(apt, cs)
+                      return _buildAppointmentCard(context, apt, cs)
                           .animate(delay: (300 + index * 100).ms)
                           .fadeIn(duration: 400.ms)
                           .slideY(
@@ -156,7 +157,7 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
     );
   }
 
-  Widget _buildAppointmentCard(Map<String, String> apt, ColorScheme cs) {
+  Widget _buildAppointmentCard(BuildContext context, Map<String, String> apt, ColorScheme cs) {
     final status = apt['status'] ?? '';
     final Color statusColor;
     final Color statusBgColor;
@@ -178,80 +179,119 @@ class _MyAppointmentsScreenState extends State<MyAppointmentsScreen> {
 
     return VitalisCard(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  apt['name'] ?? '',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: statusBgColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-            ],
+      padding: EdgeInsets.zero,
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Viewing details for ${apt['doctor']}'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 2),
           ),
-          const SizedBox(height: 4),
-          Text(
-            apt['specialty'] ?? '',
-            style: TextStyle(
-              color: cs.onSurfaceVariant,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -20,
+              bottom: -20,
+              child: Icon(
+                Icons.medical_information_rounded,
+                size: 120,
+                color: cs.onSurface.withOpacity(0.03),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _buildInfoChip(
-                  cs, Icons.calendar_today_rounded, apt['date'] ?? ''),
-              const SizedBox(width: 16),
-              _buildInfoChip(
-                  cs, Icons.access_time_rounded, apt['time'] ?? ''),
-            ],
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          apt['name'] ?? '',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: statusBgColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    apt['specialty'] ?? '',
+                    style: TextStyle(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(Icons.calendar_month_rounded, color: cs.primary, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            apt['date'] ?? '',
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            apt['time'] ?? '',
+                            style: TextStyle(
+                              color: cs.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoChip(ColorScheme cs, IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: cs.onSurfaceVariant),
-        const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(
-            color: cs.onSurfaceVariant,
-            fontSize: 13,
-          ),
-        ),
-      ],
-    );
-  }
 }

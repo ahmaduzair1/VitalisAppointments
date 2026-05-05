@@ -20,6 +20,13 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    lint {
+        disable += listOf(
+            "Deprecation",
+            "UncheckedApi"
+        )
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "Riphahmalakand.example.vitalis_appointments"
@@ -42,4 +49,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-Xlint:-unchecked")
+    options.compilerArgs.add("-Xlint:-deprecation")
 }

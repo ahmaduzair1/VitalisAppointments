@@ -36,7 +36,7 @@ class DoctorCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: theme.cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(32),
           border: theme.brightness == Brightness.dark
               ? Border.all(color: cs.outline.withValues(alpha: 0.3))
               : null,
@@ -52,15 +52,60 @@ class DoctorCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Hero(
-              tag: 'doctor_avatar_${doctor['name']}',
-              child: CircleAvatar(
-                radius: 32,
-                backgroundImage: NetworkImage(doctor['image']),
-                backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.08),
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Hero(
+                  tag: 'doctor_avatar_${doctor['name']}',
+                  child: Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: cs.onSurfaceVariant.withValues(alpha: 0.08),
+                      image: DecorationImage(
+                        image: NetworkImage(doctor['image']),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: -8,
+                  right: -8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: theme.cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 14),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${doctor['rating']}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               doctor['name'],
               style: TextStyle(
@@ -83,22 +128,7 @@ class DoctorCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 16),
-                const SizedBox(width: 4),
-                Text(
-                  '${doctor['rating']}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                    color: cs.onSurface,
-                  ),
-                ),
-              ],
-            ),
+            // Rating moved to avatar
           ],
         ),
       ),
@@ -116,22 +146,62 @@ class DoctorCard extends StatelessWidget {
       child: Row(
         children: [
           // Avatar
-          Hero(
-            tag: 'doctor_avatar_${doctor['name']}',
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: cs.outline.withValues(alpha: 0.3),
-                  width: 2,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Hero(
+                tag: 'doctor_avatar_${doctor['name']}',
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                    color: cs.onSurfaceVariant.withValues(alpha: 0.08),
+                    image: DecorationImage(
+                      image: NetworkImage(doctor['image']),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                 ),
               ),
-              child: CircleAvatar(
-                radius: 30,
-                backgroundImage: NetworkImage(doctor['image']),
-                backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.08),
+              Positioned(
+                bottom: -4,
+                right: -4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 12),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${doctor['rating']}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(width: 16),
           // Info
@@ -186,20 +256,8 @@ class DoctorCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.star_rounded,
-                        color: const Color(0xFFFBBF24), size: 16),
-                    const SizedBox(width: 4),
                     Text(
-                      '${doctor['rating']}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                        color: cs.onSurface,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '(${doctor['reviews']})',
+                      '${doctor['reviews']} Reviews',
                       style: TextStyle(
                         fontSize: 12,
                         color: cs.onSurfaceVariant,

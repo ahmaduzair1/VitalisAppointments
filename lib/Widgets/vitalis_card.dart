@@ -15,7 +15,7 @@ class VitalisCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.margin,
-    this.borderRadius = 16,
+    this.borderRadius = 32,
     this.color,
     this.onTap,
     this.hasShadow = true,

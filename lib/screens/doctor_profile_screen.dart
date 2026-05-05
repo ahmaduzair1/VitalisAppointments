@@ -30,17 +30,25 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         slivers: [
           // ── Hero header ─────────────────────────────────
           SliverAppBar(
-            expandedHeight: 280,
+            expandedHeight: MediaQuery.of(context).size.height * 0.45,
             pinned: true,
             leading: Padding(
               padding: const EdgeInsets.all(8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor.withOpacity(0.8),
-                  shape: BoxShape.circle,
+                  color: theme.scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back_rounded),
+                  color: cs.onSurface,
                   onPressed: () => Navigator.pop(context),
                 ),
               ),
@@ -83,11 +91,17 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
 
           // ── Doctor info ─────────────────────────────────
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: Container(
+              transform: Matrix4.translationValues(0, -32, 0),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // Verified badge
                   Container(
                     padding:
@@ -116,10 +130,10 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   Text(
                     doc['name'],
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 34,
                       fontWeight: FontWeight.w800,
                       color: cs.onSurface,
-                      letterSpacing: -0.5,
+                      letterSpacing: -1.0,
                     ),
                   ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
 
@@ -265,6 +279,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               ),
             ),
           ),
+        ),
         ],
       ),
 

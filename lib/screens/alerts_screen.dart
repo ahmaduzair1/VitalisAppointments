@@ -60,6 +60,16 @@ class AlertsScreen extends StatelessWidget {
     final cs = Theme.of(ctx).colorScheme;
     return VitalisCard(
       margin: const EdgeInsets.only(bottom: 12),
+      onTap: () {
+        ScaffoldMessenger.of(ctx).showSnackBar(
+          SnackBar(
+            content: Text(title),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: color.withOpacity(0.1),

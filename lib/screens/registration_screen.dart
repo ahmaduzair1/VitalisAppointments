@@ -4,6 +4,7 @@ import '../core/constants/page_transitions.dart';
 import '../widgets/vitalis_button.dart';
 import 'login_screen.dart';
 import 'main_tab_navigator.dart';
+import '../services/auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -13,6 +14,7 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final _authService = AuthService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -20,6 +22,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   String? _nameError;
   String? _emailError;
   String? _passwordError;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -54,7 +58,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -97,11 +102,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     child: Icon(Icons.person_add_rounded, color: cs.onPrimary, size: 32),
                   ),
                 ).animate().scale(
-                      begin: const Offset(0.6, 0.6),
-                      end: const Offset(1, 1),
-                      duration: 500.ms,
-                      curve: Curves.easeOutBack,
-                    ).fadeIn(duration: 300.ms),
+                  begin: const Offset(0.6, 0.6),
+                  end: const Offset(1, 1),
+                  duration: 500.ms,
+                  curve: Curves.easeOutBack,
+                ).fadeIn(duration: 300.ms),
 
                 const SizedBox(height: 24),
 
@@ -109,10 +114,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   child: Text(
                     'Create Account',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 34,
                       fontWeight: FontWeight.w800,
                       color: cs.onSurface,
-                      letterSpacing: -0.5,
+                      letterSpacing: -1.0,
                     ),
                   ),
                 ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
@@ -122,7 +127,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 Center(
                   child: Text(
                     'Sign up to start booking appointments',
-                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15, height: 1.6),
                   ),
                 ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
 
@@ -131,74 +136,220 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 // ── Full Name ─────────────────────────────
                 _buildLabel('Full Name'),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _nameController,
-                  textCapitalization: TextCapitalization.words,
-                  style: TextStyle(color: cs.onSurface, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'Sarah Jenkins',
-                    prefixIcon: Icon(Icons.person_outline_rounded,
-                        color: cs.onSurfaceVariant, size: 20),
-                    errorText: _nameError,
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: theme.brightness == Brightness.dark
+                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        : null,
+                    boxShadow: theme.brightness == Brightness.light
+                        ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: TextField(
+                      controller: _nameController,
+                      textCapitalization: TextCapitalization.words,
+                      style: TextStyle(color: cs.onSurface, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'Sarah Jenkins',
+                        hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                        prefixIcon: Icon(Icons.person_outline_rounded,
+                            color: cs.onSurfaceVariant, size: 20),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                    ),
                   ),
                 ),
+                if (_nameError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 16),
+                    child: Text(_nameError!, style: TextStyle(color: cs.error, fontSize: 12)),
+                  ),
 
                 const SizedBox(height: 20),
 
                 // ── Email ─────────────────────────────────
                 _buildLabel('Email Address'),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(color: cs.onSurface, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'name@example.com',
-                    prefixIcon: Icon(Icons.mail_outline_rounded,
-                        color: cs.onSurfaceVariant, size: 20),
-                    errorText: _emailError,
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: theme.brightness == Brightness.dark
+                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        : null,
+                    boxShadow: theme.brightness == Brightness.light
+                        ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      style: TextStyle(color: cs.onSurface, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'name@vitalis.com',
+                        hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                        prefixIcon: Icon(Icons.mail_outline_rounded,
+                            color: cs.onSurfaceVariant, size: 20),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
+                    ),
                   ),
                 ),
+                if (_emailError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 16),
+                    child: Text(_emailError!, style: TextStyle(color: cs.error, fontSize: 12)),
+                  ),
 
                 const SizedBox(height: 20),
 
                 // ── Password ──────────────────────────────
                 _buildLabel('Password'),
                 const SizedBox(height: 8),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  style: TextStyle(color: cs.onSurface, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: '••••••••',
-                    prefixIcon: Icon(Icons.lock_outline_rounded,
-                        color: cs.onSurfaceVariant, size: 20),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: cs.onSurfaceVariant,
-                        size: 20,
+                Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: theme.brightness == Brightness.dark
+                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        : null,
+                    boxShadow: theme.brightness == Brightness.light
+                        ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                    ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      style: TextStyle(color: cs.onSurface, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: '••••••••',
+                        hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                        prefixIcon: Icon(Icons.lock_outline_rounded,
+                            color: cs.onSurfaceVariant, size: 20),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                            color: cs.onSurfaceVariant,
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      ),
                     ),
-                    errorText: _passwordError,
                   ),
                 ),
+                if (_passwordError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 16),
+                    child: Text(_passwordError!, style: TextStyle(color: cs.error, fontSize: 12)),
+                  ),
 
                 const SizedBox(height: 32),
 
-                // ── Sign Up ───────────────────────────────
+                // ── Backend Error Message ─────────────────
+                if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error.withOpacity(0.18),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: TextStyle(color: Theme.of(context).colorScheme.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // ── Sign Up Button ────────────────────────
                 VitalisButton(
                   label: 'Create Account',
-                  onPressed: () {
-                    if (_validateForm()) {
-                      Navigator.pushReplacement(
+                  isLoading: _isLoading,
+                  onPressed: () async {
+                    if (!_validateForm()) return;
+
+                    setState(() {
+                      _isLoading = true;
+                      _errorMessage = null;
+                    });
+
+                    try {
+                      // CHANGED: We now pass the name as the 3rd parameter!
+                      await _authService.signUpWithEmailPassword(
+                        _emailController.text.trim(),
+                        _passwordController.text.trim(),
+                        _nameController.text.trim(),
+                      );
+
+                      if (!mounted) return;
+
+                      Navigator.pushAndRemoveUntil(
                         context,
                         PageTransitions.fadeSlide(const MainTabNavigator()),
+                            (route) => false,
                       );
+                    } catch (e) {
+                      if (!mounted) return;
+                      setState(() {
+                        _errorMessage = e.toString().replaceAll('Exception: ', '');
+                        _isLoading = false;
+                      });
                     }
                   },
                 ),

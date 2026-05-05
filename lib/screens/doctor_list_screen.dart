@@ -46,36 +46,80 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     final cs = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Find Doctors'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Column(
-        children: [
-          // ── Search bar ────────────────────────────────
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Custom Header ─────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 24, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Find Doctors',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: cs.onSurface,
+                      letterSpacing: -1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Search bar ────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              style: TextStyle(color: cs.onSurface, fontSize: 15),
-              decoration: InputDecoration(
-                hintText: 'Search by name or specialty...',
-                prefixIcon: Icon(Icons.search_rounded,
-                    color: cs.onSurfaceVariant, size: 22),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.close_rounded,
-                            color: cs.onSurfaceVariant, size: 20),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                      )
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: Container(
+              height: 60,
+              decoration: BoxDecoration(
+                color: cs.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: theme.brightness == Brightness.dark
+                    ? Border.all(color: cs.outline.withOpacity(0.3))
                     : null,
+                boxShadow: theme.brightness == Brightness.light
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
+              ),
+              child: Center(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  style: TextStyle(color: cs.onSurface, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Search by name or specialty...',
+                    hintStyle: TextStyle(color: cs.onSurfaceVariant),
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: cs.onSurfaceVariant, size: 22),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.close_rounded,
+                                color: cs.onSurfaceVariant, size: 20),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() {});
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 16),
+                  ),
+                ),
               ),
             ).animate().fadeIn(duration: 300.ms),
           ),
@@ -201,6 +245,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 }

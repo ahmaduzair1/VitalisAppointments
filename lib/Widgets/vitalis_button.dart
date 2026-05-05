@@ -20,7 +20,7 @@ class VitalisButton extends StatefulWidget {
     this.isLoading = false,
     this.icon,
     this.width,
-    this.height = 56,
+    this.height = 64,
   });
 
   @override
@@ -79,8 +79,9 @@ class _VitalisButtonState extends State<VitalisButton>
               Text(
                 widget.label,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                   color: isPrimary ? cs.onPrimary : cs.onSurface,
                 ),
               ),
@@ -92,7 +93,7 @@ class _VitalisButtonState extends State<VitalisButton>
       case VitalisButtonVariant.primary:
         button = Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(100),
             boxShadow: [
               BoxShadow(
                 color: cs.primary.withOpacity(0.18),
@@ -107,7 +108,7 @@ class _VitalisButtonState extends State<VitalisButton>
               minimumSize: Size(widget.width ?? double.infinity, widget.height),
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(100),
               ),
             ),
             child: buttonChild,
@@ -120,7 +121,7 @@ class _VitalisButtonState extends State<VitalisButton>
             minimumSize: Size(widget.width ?? double.infinity, widget.height),
             side: BorderSide(color: cs.outline),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(100),
             ),
           ),
           child: buttonChild,
