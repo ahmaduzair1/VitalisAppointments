@@ -57,19 +57,27 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Doctor image
                   Hero(
-                    tag: 'doctor_avatar_${doc['name']}',
+                    tag: 'doctor_avatar_${doc['name'] ?? 'Unknown'}',
                     child: Container(
                       decoration: BoxDecoration(
-                        image: DecorationImage(
-                          image: NetworkImage(doc['image']),
-                          fit: BoxFit.cover,
-                        ),
+                        image: (doc['image'] as String?)?.isNotEmpty == true
+                            ? DecorationImage(
+                                image: NetworkImage(doc['image']),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                        color: cs.primary.withValues(alpha: 0.1),
                       ),
+                      child: (doc['image'] as String?)?.isNotEmpty != true
+                          ? Center(
+                              child: Icon(Icons.person_rounded,
+                                  size: 80,
+                                  color: cs.primary.withValues(alpha: 0.5)),
+                            )
+                          : null,
                     ),
                   ),
-                  // Gradient overlay
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -95,202 +103,184 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
               transform: Matrix4.translationValues(0, -32, 0),
               decoration: BoxDecoration(
                 color: theme.scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(32)),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                  // Verified badge
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: cs.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      'VERIFIED',
-                      style: TextStyle(
-                        color: cs.onPrimary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cs.primary,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                  )
-                      .animate()
-                      .fadeIn(duration: 300.ms)
-                      .slideX(begin: -0.1, end: 0, duration: 300.ms),
-
-                  const SizedBox(height: 12),
-
-                  // Name
-                  Text(
-                    doc['name'],
-                    style: TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: cs.onSurface,
-                      letterSpacing: -1.0,
-                    ),
-                  ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
-
-                  const SizedBox(height: 8),
-
-                  // Specialty + Location
-                  Text(
-                    doc['specialty'],
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
-
-                  const SizedBox(height: 8),
-
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined,
-                          color: cs.onSurfaceVariant, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        doc['location'],
+                      child: Text(
+                        'VERIFIED',
                         style: TextStyle(
-                          color: cs.onSurfaceVariant,
-                          fontSize: 14,
+                          color: cs.onPrimary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
                         ),
                       ),
-                    ],
-                  ).animate(delay: 200.ms).fadeIn(duration: 400.ms),
+                    )
+                        .animate()
+                        .fadeIn(duration: 300.ms)
+                        .slideX(begin: -0.1, end: 0),
 
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 12),
 
-                  // ── Stats row ───────────────────────────
-                  Row(
-                    children: [
-                      StatCard(
-                        icon: Icons.star_rounded,
-                        value: doc['rating'].toString(),
-                        label: '${doc['reviews']} Reviews',
+                    Text(
+                      doc['name'] ?? 'Unknown Doctor',
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
                       ),
-                      const SizedBox(width: 12),
-                      StatCard(
-                        icon: Icons.workspace_premium_rounded,
-                        value: doc['experience'].split(' ')[0],
-                        label: 'Years Exp.',
+                    ).animate(delay: 100.ms).fadeIn(),
+
+                    const SizedBox(height: 8),
+
+                    Text(
+                      doc['specialty'] ?? 'General',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: cs.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 12),
-                      StatCard(
-                        icon: Icons.people_rounded,
-                        value: doc['patients'],
-                        label: 'Patients',
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined,
+                            size: 16, color: cs.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            doc['location'] ?? 'Vitalis Clinic',
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatCard(
+                            icon: Icons.star_rounded,
+                            value: (doc['rating'] ?? 0.0).toString(),
+                            label: '${doc['reviews'] ?? '0'} Reviews',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatCard(
+                            icon: Icons.workspace_premium_rounded,
+                            value: (doc['experience'] ?? '0 years').toString().split(' ')[0],
+                            label: 'Years Exp.',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatCard(
+                            icon: Icons.people_rounded,
+                            value: (doc['patients'] ?? '0').toString(),
+                            label: 'Patients',
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Text(
+                      'About',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
                       ),
-                    ],
-                  )
-                      .animate(delay: 250.ms)
-                      .fadeIn(duration: 500.ms)
-                      .slideY(begin: 0.1, end: 0, duration: 500.ms),
-
-                  const SizedBox(height: 32),
-
-                  // ── About section ───────────────────────
-                  Text(
-                    'About',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    doc['about'],
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      height: 1.7,
-                      fontSize: 14,
+                    const SizedBox(height: 12),
+                    Text(
+                      doc['about'] ?? 'An experienced specialist dedicated to providing top-quality care to their patients.',
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
+                        height: 1.6,
+                        fontSize: 14,
+                      ),
                     ),
-                  ).animate(delay: 300.ms).fadeIn(duration: 400.ms),
 
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-                  // ── Available Time Slots ─────────────────
-                  Text(
-                    'Available Slots',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: cs.onSurface,
+                    Text(
+                      'Available Slots',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Morning',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: List.generate(MockData.morningSlots.length, (i) {
-                      return TimeSlotChip(
-                        time: MockData.morningSlots[i],
-                        isSelected: _selectedTimeIndex == i,
-                        onTap: () =>
-                            setState(() => _selectedTimeIndex = i),
-                      );
-                    }),
-                  ).animate(delay: 350.ms).fadeIn(duration: 400.ms),
 
-                  const SizedBox(height: 16),
-                  Text(
-                    'Afternoon',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children:
-                        List.generate(MockData.afternoonSlots.length, (i) {
-                      final globalIndex = MockData.morningSlots.length + i;
-                      return TimeSlotChip(
-                        time: MockData.afternoonSlots[i],
-                        isSelected: _selectedTimeIndex == globalIndex,
-                        onTap: () => setState(
-                            () => _selectedTimeIndex = globalIndex),
-                      );
-                    }),
-                  ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
+                    const SizedBox(height: 12),
 
-                  const SizedBox(height: 100),
-                ],
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children:
+                      List.generate(MockData.morningSlots.length, (i) {
+                        return TimeSlotChip(
+                          time: MockData.morningSlots[i],
+                          isSelected: _selectedTimeIndex == i,
+                          onTap: () =>
+                              setState(() => _selectedTimeIndex = i),
+                        );
+                      }),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children:
+                      List.generate(MockData.afternoonSlots.length, (i) {
+                        final index = MockData.morningSlots.length + i;
+                        return TimeSlotChip(
+                          time: MockData.afternoonSlots[i],
+                          isSelected: _selectedTimeIndex == index,
+                          onTap: () =>
+                              setState(() => _selectedTimeIndex = index),
+                        );
+                      }),
+                    ),
+
+                    const SizedBox(height: 100), // padding for bottom bar
+                  ],
+                ),
               ),
             ),
           ),
-        ),
         ],
       ),
 
-      // ── Sticky bottom CTA ──────────────────────────────
+      // ── Bottom bar FIXED ──────────────────────────────
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), // Reduced padding
         decoration: BoxDecoration(
           color: theme.cardColor,
-          border: Border(
-            top: BorderSide(color: cs.outline.withOpacity(0.3)),
-          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -301,38 +291,32 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         ),
         child: SafeArea(
           child: Row(
-            children: [
+            children: [ // Removed spaceBetween, relying purely on Expanded
               Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Consultation Fee',
-                    style: TextStyle(
-                      color: cs.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
+                  const Text(
+                    'Total Fee', // Shortened label
+                    style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
-                  const SizedBox(height: 2),
                   Text(
-                    '\$${doc['fee']}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: cs.onSurface,
-                    ),
+                    '\$${doc['fee'] ?? 0}',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16), // Reduced the gap from 24 to 16
+
               Expanded(
                 child: VitalisButton(
-                  label: 'Book Appointment',
-                  onPressed: () => Navigator.push(
-                    context,
-                    PageTransitions.slideRight(
-                        BookingScreen(doctor: doc)),
-                  ),
+                  label: 'Book Now', // Shortened button text to guarantee it fits!
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      PageTransitions.fadeSlide(BookingScreen(doctor: doc)),
+                    );
+                  },
                 ),
               ),
             ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'vitalis_card.dart';
 
 /// Premium doctor card with avatar, specialty, rating, and availability.
+/// All fields are null-safe to handle incomplete Firebase documents.
 class DoctorCard extends StatelessWidget {
   final Map<String, dynamic> doctor;
   final VoidCallback? onTap;
@@ -14,6 +15,15 @@ class DoctorCard extends StatelessWidget {
     this.isCompact = false,
   });
 
+  // ── Safe accessors ──────────────────────────────────────
+  String get _name => doctor['name'] as String? ?? 'Unknown Doctor';
+  String get _specialty => doctor['specialty'] as String? ?? 'General';
+  String get _image => doctor['image'] as String? ?? '';
+  String get _rating => (doctor['rating'] ?? 0.0).toString();
+  String get _reviews => (doctor['reviews'] ?? '0').toString();
+  String get _fee => (doctor['fee'] ?? 0).toString();
+  bool get _isAvailable => doctor['availableToday'] == true;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -23,6 +33,35 @@ class DoctorCard extends StatelessWidget {
       return _buildCompactCard(context, theme, cs);
     }
     return _buildFullCard(context, theme, cs);
+  }
+
+  /// Builds either a NetworkImage or a fallback icon for missing images.
+  Widget _buildAvatarImage(ColorScheme cs, double size, double radius) {
+    if (_image.isNotEmpty) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          color: cs.onSurfaceVariant.withValues(alpha: 0.08),
+          image: DecorationImage(
+            image: NetworkImage(_image),
+            fit: BoxFit.cover,
+          ),
+        ),
+      );
+    }
+    // Fallback: icon placeholder
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        color: cs.primary.withValues(alpha: 0.1),
+      ),
+      child: Icon(Icons.person_rounded,
+          size: size * 0.5, color: cs.primary.withValues(alpha: 0.6)),
+    );
   }
 
   /// Horizontal scrolling compact card (for "Top Doctors" row).
@@ -56,19 +95,8 @@ class DoctorCard extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Hero(
-                  tag: 'doctor_avatar_${doctor['name']}',
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.08),
-                      image: DecorationImage(
-                        image: NetworkImage(doctor['image']),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
+                  tag: 'doctor_avatar_$_name',
+                  child: _buildAvatarImage(cs, 80, 24),
                 ),
                 Positioned(
                   bottom: -8,
@@ -92,7 +120,7 @@ class DoctorCard extends StatelessWidget {
                         Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 14),
                         const SizedBox(width: 2),
                         Text(
-                          '${doctor['rating']}',
+                          _rating,
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 11,
@@ -107,7 +135,7 @@ class DoctorCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              doctor['name'],
+              _name,
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
@@ -119,7 +147,7 @@ class DoctorCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              doctor['specialty'],
+              _specialty,
               style: TextStyle(
                 color: cs.onSurfaceVariant,
                 fontSize: 12,
@@ -138,8 +166,6 @@ class DoctorCard extends StatelessWidget {
   /// Full-width list card (for "Available Today" / Doctor List).
   Widget _buildFullCard(
       BuildContext context, ThemeData theme, ColorScheme cs) {
-    final bool isAvailable = doctor['availableToday'] == true;
-
     return VitalisCard(
       margin: const EdgeInsets.only(bottom: 12),
       onTap: onTap,
@@ -150,23 +176,39 @@ class DoctorCard extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Hero(
-                tag: 'doctor_avatar_${doctor['name']}',
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: cs.outline.withValues(alpha: 0.3),
-                      width: 2,
-                    ),
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.08),
-                    image: DecorationImage(
-                      image: NetworkImage(doctor['image']),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
+                tag: 'doctor_avatar_$_name',
+                child: _image.isNotEmpty
+                    ? Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: cs.outline.withValues(alpha: 0.3),
+                            width: 2,
+                          ),
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.08),
+                          image: DecorationImage(
+                            image: NetworkImage(_image),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      )
+                    : Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: cs.outline.withValues(alpha: 0.3),
+                            width: 2,
+                          ),
+                          color: cs.primary.withValues(alpha: 0.1),
+                        ),
+                        child: Icon(Icons.person_rounded,
+                            size: 40,
+                            color: cs.primary.withValues(alpha: 0.6)),
+                      ),
               ),
               Positioned(
                 bottom: -4,
@@ -190,7 +232,7 @@ class DoctorCard extends StatelessWidget {
                       Icon(Icons.star_rounded, color: const Color(0xFFFBBF24), size: 12),
                       const SizedBox(width: 2),
                       Text(
-                        '${doctor['rating']}',
+                        _rating,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 10,
@@ -213,7 +255,7 @@ class DoctorCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        doctor['name'],
+                        _name,
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 16,
@@ -226,17 +268,17 @@ class DoctorCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: isAvailable
+                        color: _isAvailable
                             ? const Color(0xFF10B981).withValues(alpha: 0.1)
                             : cs.onSurfaceVariant.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        isAvailable ? 'Available' : 'Busy',
+                        _isAvailable ? 'Available' : 'Busy',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isAvailable
+                          color: _isAvailable
                               ? const Color(0xFF10B981)
                               : cs.onSurfaceVariant,
                         ),
@@ -246,7 +288,7 @@ class DoctorCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  doctor['specialty'],
+                  _specialty,
                   style: TextStyle(
                     color: cs.onSurfaceVariant,
                     fontSize: 13,
@@ -257,7 +299,7 @@ class DoctorCard extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      '${doctor['reviews']} Reviews',
+                      '$_reviews Reviews',
                       style: TextStyle(
                         fontSize: 12,
                         color: cs.onSurfaceVariant,
@@ -265,7 +307,7 @@ class DoctorCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '\$${doctor['fee']}',
+                      '\$$_fee',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,

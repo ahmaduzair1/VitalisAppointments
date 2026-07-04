@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../core/mock_data.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../widgets/time_slot_chip.dart';
 import '../widgets/vitalis_button.dart';
 import '../widgets/vitalis_card.dart';
@@ -19,9 +21,15 @@ class _BookingScreenState extends State<BookingScreen> {
   int _currentStep = 0; // 0=date, 1=time, 2=confirm
   int _selectedDateIndex = 1;
   int _selectedTimeIndex = -1;
+  bool _isLoading = false; // <-- Added loading state for Firebase
 
   // Generate next 7 days
   late final List<DateTime> _dates;
+
+  // Local Time Slots (Replacing MockData completely)
+  final List<String> _morningSlots = ['08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM'];
+  final List<String> _afternoonSlots = ['12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM'];
+  final List<String> _eveningSlots = ['05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'];
 
   @override
   void initState() {
@@ -45,7 +53,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
   String get _selectedTime {
     if (_selectedTimeIndex < 0) return '';
-    final allSlots = [...MockData.morningSlots, ...MockData.afternoonSlots];
+    final allSlots = [..._morningSlots, ..._afternoonSlots, ..._eveningSlots];
     if (_selectedTimeIndex < allSlots.length) return allSlots[_selectedTimeIndex];
     return '';
   }
@@ -53,6 +61,51 @@ class _BookingScreenState extends State<BookingScreen> {
   String get _selectedDateFormatted {
     final date = _dates[_selectedDateIndex];
     return '${_monthName(date)} ${date.day}, ${date.year}';
+  }
+
+  // ── NEW: Firebase Booking Function ───────────────────────
+  Future<void> _processBooking() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("User not logged in");
+
+      // 1. Save data to Firestore 'appointments' collection
+      await FirebaseFirestore.instance.collection('appointments').add({
+        'patientId': user.uid,
+        'doctorId': widget.doctor['id'], // Ensure your Doctor map has the ID!
+        'doctorName': widget.doctor['name'],
+        'doctorImage': widget.doctor['image'],
+        'doctorSpecialty': widget.doctor['specialty'],
+        'location': widget.doctor['location'] ?? 'Vitalis Clinic',
+        'date': _selectedDateFormatted,
+        'time': _selectedTime,
+        'fee': widget.doctor['fee'],
+        'status': 'upcoming', // Important for filtering later
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Navigate to Success Screen on success
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        PageTransitions.fadeSlide(
+          SuccessScreen(
+            doctor: widget.doctor,
+            date: _selectedDateFormatted,
+            time: _selectedTime,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Booking failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -74,38 +127,51 @@ class _BookingScreenState extends State<BookingScreen> {
           },
         ),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // ── Step indicator ─────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-            child: Row(
-              children: [
-                _buildStepDot(0, 'Date'),
-                _buildStepLine(0),
-                _buildStepDot(1, 'Time'),
-                _buildStepLine(1),
-                _buildStepDot(2, 'Confirm'),
-              ],
-            ),
-          ),
+          Column(
+            children: [
+              // ── Step indicator ─────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                child: Row(
+                  children: [
+                    _buildStepDot(0, 'Date'),
+                    _buildStepLine(0),
+                    _buildStepDot(1, 'Time'),
+                    _buildStepLine(1),
+                    _buildStepDot(2, 'Confirm'),
+                  ],
+                ),
+              ),
 
-          // ── Step content ──────────────────────────────
-          Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                switchInCurve: Curves.easeOut,
-                child: _currentStep == 0
-                    ? _buildDateStep(cs)
-                    : _currentStep == 1
+              // ── Step content ──────────────────────────────
+              Expanded(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.easeOut,
+                    child: _currentStep == 0
+                        ? _buildDateStep(cs)
+                        : _currentStep == 1
                         ? _buildTimeStep(cs)
                         : _buildConfirmStep(theme, cs),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // ── Loading Overlay ─────────────────────────────
+          if (_isLoading)
+            Container(
+              color: cs.surface.withOpacity(0.5),
+              child: const Center(
+                child: CircularProgressIndicator(),
               ),
             ),
-          ),
         ],
       ),
 
@@ -121,23 +187,14 @@ class _BookingScreenState extends State<BookingScreen> {
         child: SafeArea(
           child: VitalisButton(
             label: _currentStep == 2 ? 'Confirm Booking' : 'Continue',
-            onPressed: _canContinue()
+            onPressed: _canContinue() && !_isLoading
                 ? () {
-                    if (_currentStep < 2) {
-                      setState(() => _currentStep++);
-                    } else {
-                      Navigator.pushReplacement(
-                        context,
-                        PageTransitions.fadeSlide(
-                          SuccessScreen(
-                            doctor: widget.doctor,
-                            date: _selectedDateFormatted,
-                            time: _selectedTime,
-                          ),
-                        ),
-                      );
-                    }
-                  }
+              if (_currentStep < 2) {
+                setState(() => _currentStep++);
+              } else {
+                _processBooking(); // <-- Triggers Firebase Upload
+              }
+            }
                 : null,
           ),
         ),
@@ -240,12 +297,12 @@ class _BookingScreenState extends State<BookingScreen> {
                         : Border.all(color: cs.outline),
                     boxShadow: isSelected
                         ? [
-                            BoxShadow(
-                              color: cs.primary.withOpacity(0.25),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ]
+                      BoxShadow(
+                        color: cs.primary.withOpacity(0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
                         : null,
                   ),
                   child: Column(
@@ -268,7 +325,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                           color:
-                              isSelected ? cs.onPrimary : cs.onSurface,
+                          isSelected ? cs.onPrimary : cs.onSurface,
                         ),
                       ),
                     ],
@@ -310,9 +367,9 @@ class _BookingScreenState extends State<BookingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: List.generate(MockData.morningSlots.length, (i) {
+          children: List.generate(_morningSlots.length, (i) {
             return TimeSlotChip(
-              time: MockData.morningSlots[i],
+              time: _morningSlots[i],
               isSelected: _selectedTimeIndex == i,
               onTap: () => setState(() => _selectedTimeIndex = i),
             );
@@ -333,10 +390,10 @@ class _BookingScreenState extends State<BookingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: List.generate(MockData.afternoonSlots.length, (i) {
-            final globalIndex = MockData.morningSlots.length + i;
+          children: List.generate(_afternoonSlots.length, (i) {
+            final globalIndex = _morningSlots.length + i;
             return TimeSlotChip(
-              time: MockData.afternoonSlots[i],
+              time: _afternoonSlots[i],
               isSelected: _selectedTimeIndex == globalIndex,
               onTap: () =>
                   setState(() => _selectedTimeIndex = globalIndex),
@@ -358,11 +415,11 @@ class _BookingScreenState extends State<BookingScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: List.generate(MockData.eveningSlots.length, (i) {
+          children: List.generate(_eveningSlots.length, (i) {
             final globalIndex =
-                MockData.morningSlots.length + MockData.afternoonSlots.length + i;
+                _morningSlots.length + _afternoonSlots.length + i;
             return TimeSlotChip(
-              time: MockData.eveningSlots[i],
+              time: _eveningSlots[i],
               isSelected: _selectedTimeIndex == globalIndex,
               onTap: () =>
                   setState(() => _selectedTimeIndex = globalIndex),
@@ -442,7 +499,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   cs, Icons.access_time_rounded, 'Time', _selectedTime),
               const SizedBox(height: 12),
               _buildDetailRow(
-                  cs, Icons.location_on_outlined, 'Location', widget.doctor['location']),
+                  cs, Icons.location_on_outlined, 'Location', widget.doctor['location'] ?? 'Vitalis Clinic'),
 
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -533,25 +590,25 @@ class _BookingScreenState extends State<BookingScreen> {
               shape: BoxShape.circle,
               boxShadow: isCurrent
                   ? [
-                      BoxShadow(
-                        color: cs.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
+                BoxShadow(
+                  color: cs.primary.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
                   : null,
             ),
             child: Center(
               child: isActive && !isCurrent
                   ? Icon(Icons.check_rounded, size: 16, color: cs.onPrimary)
                   : Text(
-                      '${step + 1}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: isActive ? cs.onPrimary : cs.primary,
-                      ),
-                    ),
+                '${step + 1}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: isActive ? cs.onPrimary : cs.primary,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 6),
