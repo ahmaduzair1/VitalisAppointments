@@ -44,7 +44,15 @@ class _MainTabNavigatorState extends State<MainTabNavigator> {
       ProfileSettingsScreen(),
     ];
 
-    return Scaffold(
+    return PopScope(
+      canPop: _currentIndex == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_currentIndex != 0) {
+          setState(() => _currentIndex = 0);
+        }
+      },
+      child: Scaffold(
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         child: KeyedSubtree(
@@ -100,6 +108,7 @@ class _MainTabNavigatorState extends State<MainTabNavigator> {
           ),
         ),
       ),
+    ),
     );
   }
 }

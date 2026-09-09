@@ -9,6 +9,7 @@ import '../services/appointment_service.dart';
 import '../services/notification_service.dart';
 import '../widgets/vitalis_card.dart';
 import 'appointment_detail_screen.dart';
+import 'review_screen.dart';
 
 class AlertsScreen extends StatelessWidget {
   const AlertsScreen({super.key});
@@ -54,7 +55,7 @@ class AlertsScreen extends StatelessWidget {
                       ).animate().fadeIn(duration: 400.ms),
                       const SizedBox(height: 8),
                       Text(
-                        'Bookings, payments, reminders, and visit updates in one place.',
+                        'Bookings, payments, reminders, and a note after your visit to rate the doctor.',
                         style: TextStyle(color: cs.onSurfaceVariant, fontSize: 15),
                       ),
                       const SizedBox(height: 24),
@@ -117,6 +118,7 @@ class AlertsScreen extends StatelessWidget {
       'payment' => Icons.payments_rounded,
       'cancel' => Icons.event_busy_rounded,
       'reminder' => Icons.notifications_active_rounded,
+      'review' => Icons.rate_review_rounded,
       _ => Icons.notifications_rounded,
     };
     final color = switch (n.type) {
@@ -124,6 +126,7 @@ class AlertsScreen extends StatelessWidget {
       'cancel' => cs.error,
       'booking' => cs.primary,
       'reminder' => const Color(0xFFD97706),
+      'review' => const Color(0xFF7C3AED),
       _ => const Color(0xFF0EA5A4),
     };
 
@@ -138,7 +141,11 @@ class AlertsScreen extends StatelessWidget {
           if (apt == null || !ctx.mounted) return;
           Navigator.push(
             ctx,
-            PageTransitions.slideRight(AppointmentDetailScreen(appointment: apt)),
+            PageTransitions.slideRight(
+              n.type == 'review'
+                  ? ReviewScreen(appointment: apt)
+                  : AppointmentDetailScreen(appointment: apt),
+            ),
           );
         } catch (e) {
           if (!ctx.mounted) return;

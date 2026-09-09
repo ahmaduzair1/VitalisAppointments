@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
 
                           return Text(
-                            'Hello, $firstName 👋',
+                            'Hello, $firstName',
                             style: TextStyle(
                               fontSize: 15,
                               height: 1.6,
@@ -145,10 +145,29 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 2,
                             ),
                           ),
-                          child: NetworkAvatar(
-                            url: currentUser?.photoURL ?? '',
-                            size: 40,
-                            radius: 20,
+                          child: StreamBuilder<DocumentSnapshot>(
+                            stream: currentUser == null
+                                ? null
+                                : FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(currentUser.uid)
+                                    .snapshots(),
+                            builder: (context, photoSnap) {
+                              String photo = currentUser?.photoURL ?? '';
+                              if (photoSnap.hasData && photoSnap.data!.exists) {
+                                final data =
+                                    photoSnap.data!.data() as Map<String, dynamic>;
+                                final stored = data['photoUrl'] as String?;
+                                if (stored != null && stored.isNotEmpty) {
+                                  photo = stored;
+                                }
+                              }
+                              return NetworkAvatar(
+                                url: photo,
+                                size: 40,
+                                radius: 20,
+                              );
+                            },
                           ),
                         ),
                       ),

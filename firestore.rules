@@ -13,7 +13,7 @@ service cloud.firestore {
     //   - email: string (required, email format, immutable)
     //   - role: string (required, must be 'patient' on client create; immutable)
     //   - phone: string (optional, 0-20)
-    //   - photoUrl: string (optional, empty or http(s) URL, max 500)
+    //   - photoUrl: string (optional, empty, http(s) URL, or fs:profile:{uid} / fs:doctor:{id})
     //   - allergies: string (optional, 0-1000)
     //   - conditions: string (optional, 0-2000)
     //   - notificationsEnabled: bool (optional)
@@ -58,10 +58,24 @@ service cloud.firestore {
     //   - userId: string
     //   - title: string 1-120
     //   - body: string 1-500
-    //   - type: booking | payment | cancel | system | reminder
+    //   - type: booking | payment | cancel | system | reminder | review
     //   - isRead: bool
     //   - appointmentId: string 0-128
     //   - createdAt: timestamp
+    //
+    // Collection: reviews
+    // Document ID: appointmentId (one review per visit)
+    // Fields:
+    //   - patientId, doctorId, appointmentId, doctorName, patientName
+    //   - rating: 1-5, comment: 0-400, createdAt
+    //   - reply, repliedBy: hospital response (empty until admin replies)
+    //   - replyAt: timestamp after admin replies
+    // Patients create their own review. Admin may reply only.
+    //
+    // Collection: profilePhotos / doctorPhotos
+    // Document ID: user uid or doctor id
+    // Fields: bytes (base64 jpeg, max 700000), contentType, updatedAt
+    // Used because Cloud Storage on this project requires a paid Blaze plan.
     //
     // Admin bootstrap: verified email admin@vitalis.app (not a self-assignable role).
     // ===============================================================
@@ -88,8 +102,22 @@ service cloud.firestore {
 
     function isValidUrlOrEmpty(url) {
       return url is string
-        && url.size() <= 500
-        && (url.size() == 0 || url.matches('^https://.*') || url.matches('^http://.*'));
+        && url.size() <= 2000
+        && (
+          url.size() == 0
+          || url.matches('^https://.*')
+          || url.matches('^http://.*')
+          || url.matches('^fs:(profile|doctor):[A-Za-z0-9_-]{1,128}$')
+        );
+    }
+
+    function isValidStoredPhoto(data) {
+      return data.keys().hasOnly(['bytes', 'contentType', 'updatedAt'])
+        && data.bytes is string
+        && data.bytes.size() >= 32
+        && data.bytes.size() <= 700000
+        && data.contentType == 'image/jpeg'
+        && data.updatedAt is timestamp;
     }
 
     function validString(field, minLen, maxLen) {
@@ -194,10 +222,39 @@ service cloud.firestore {
         && data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
         && data.body is string && data.body.size() >= 1 && data.body.size() <= 500
-        && data.type in ['booking', 'payment', 'cancel', 'system', 'reminder']
+        && data.type in ['booking', 'payment', 'cancel', 'system', 'reminder', 'review']
         && data.isRead is bool
         && data.appointmentId is string && data.appointmentId.size() <= 128
         && data.createdAt is timestamp;
+    }
+
+    function appointmentDoc(id) {
+      return /databases/$(database)/documents/appointments/$(id);
+    }
+
+    function isValidReview(data) {
+      return (
+          data.keys().hasOnly([
+            'patientId', 'doctorId', 'appointmentId', 'doctorName', 'patientName',
+            'rating', 'comment', 'createdAt', 'reply', 'repliedBy'
+          ])
+          || data.keys().hasOnly([
+            'patientId', 'doctorId', 'appointmentId', 'doctorName', 'patientName',
+            'rating', 'comment', 'createdAt', 'reply', 'repliedBy', 'replyAt'
+          ])
+        )
+        && data.patientId is string && data.patientId.size() > 0 && data.patientId.size() <= 128
+        && data.doctorId is string && data.doctorId.size() >= 1 && data.doctorId.size() <= 128
+        && data.appointmentId is string && data.appointmentId.size() >= 1
+          && data.appointmentId.size() <= 128
+        && data.doctorName is string && data.doctorName.size() >= 1 && data.doctorName.size() <= 80
+        && data.patientName is string && data.patientName.size() >= 1 && data.patientName.size() <= 80
+        && data.rating is number && data.rating >= 1 && data.rating <= 5
+        && data.comment is string && data.comment.size() <= 400
+        && data.createdAt is timestamp
+        && data.reply is string && data.reply.size() <= 400
+        && data.repliedBy is string && data.repliedBy.size() <= 80
+        && (!('replyAt' in data) || data.replyAt is timestamp);
     }
 
     match /users/{userId} {
@@ -368,6 +425,61 @@ service cloud.firestore {
               .data.patientId == request.auth.uid
           )
         );
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isAuthenticated()
+        && (resource.data.patientId == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated()
+        && isValidReview(request.resource.data)
+        && reviewId == request.resource.data.appointmentId
+        && request.resource.data.patientId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.reply == ''
+        && request.resource.data.repliedBy == ''
+        && !('replyAt' in request.resource.data)
+        && exists(appointmentDoc(reviewId))
+        && get(appointmentDoc(reviewId)).data.patientId == request.auth.uid
+        && get(appointmentDoc(reviewId)).data.doctorId == request.resource.data.doctorId
+        && get(appointmentDoc(reviewId)).data.status != 'cancelled';
+
+      allow update: if isAdmin()
+        && isValidReview(request.resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['reply', 'repliedBy', 'replyAt'])
+        && request.resource.data.patientId == resource.data.patientId
+        && request.resource.data.doctorId == resource.data.doctorId
+        && request.resource.data.appointmentId == resource.data.appointmentId
+        && request.resource.data.doctorName == resource.data.doctorName
+        && request.resource.data.patientName == resource.data.patientName
+        && request.resource.data.rating == resource.data.rating
+        && request.resource.data.comment == resource.data.comment
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.reply.size() >= 1
+        && request.resource.data.replyAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /profilePhotos/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create, update: if isOwner(userId)
+        && isValidStoredPhoto(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /doctorPhotos/{doctorId} {
+      allow read: if isAuthenticated();
+
+      allow create, update: if isAdmin()
+        && isValidStoredPhoto(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isAdmin();
     }
   }
 }

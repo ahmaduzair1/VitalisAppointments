@@ -472,19 +472,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       final user = await _authService.signInWithGoogle();
                       if (!mounted) return;
 
-                      if (user != null) {
-                        // AuthWrapper switches to the right home (patient vs admin).
-                      } else {
-                        // User canceled the sign in popup
-                        setState(() {
-                          _isLoading = false;
-                        });
+                      if (user == null) {
+                        setState(() => _isLoading = false);
                       }
                     } catch (e) {
                       if (!mounted) return;
-                      setState(() {
-                        _errorMessage = "Google Sign-In failed. Check configuration.";
-                      });
+                      final message =
+                          e.toString().replaceAll('Exception: ', '');
+                      if (message.toLowerCase().contains('cancelled')) {
+                        return;
+                      }
+                      setState(() => _errorMessage = message);
                     } finally {
                       if (mounted) setState(() => _isLoading = false);
                     }

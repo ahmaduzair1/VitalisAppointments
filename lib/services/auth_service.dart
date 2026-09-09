@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../core/app_config.dart';
@@ -7,6 +8,7 @@ import '../core/app_config.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
   User? get currentUser => _auth.currentUser;
 
@@ -90,7 +92,9 @@ class AuthService {
       return credential.user;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        throw Exception('User already exists, please login.');
+        throw Exception(
+          'This email address is already registered. Please sign in.',
+        );
       }
       throw Exception(e.message ?? 'An error occurred during sign up.');
     } catch (e) {
@@ -117,42 +121,126 @@ class AuthService {
     }
   }
 
-  Future<User?> signInWithGoogle() async {
+  Future<User?> signInWithGoogle({bool isSignUp = false}) async {
     try {
-      await GoogleSignIn().signOut();
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
 
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+      if (googleAuth.idToken == null) {
+        throw Exception(
+          'Google Sign-In is not fully set up on this phone. '
+          'In Firebase, enable Google sign-in and add this app SHA-1 fingerprint, '
+          'then download a new google-services.json.',
+        );
+      }
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential;
+      try {
+        userCredential = await _auth.signInWithCredential(credential);
+      } on FirebaseAuthException catch (e) {
+        try {
+          await _googleSignIn.signOut();
+        } catch (_) {}
+        throw Exception(_googleAuthMessage(e));
+      }
+
+      final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+      if (isSignUp && !isNewUser) {
+        await signOut();
+        throw Exception(
+          'This email address is already registered. Please sign in.',
+        );
+      }
 
       if (userCredential.user != null) {
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(userCredential.user!.uid)
-            .get();
-
-        if (!userDoc.exists) {
-          await _createUserDocument(
-            userCredential.user!,
-            userCredential.user!.displayName ?? 'Google User',
-          );
-        }
+        await ensureUserDocument();
       }
 
       return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_googleAuthMessage(e));
+    } on PlatformException catch (e) {
+      final code = e.code.toLowerCase();
+      if (code.contains('canceled') ||
+          code.contains('cancelled') ||
+          code == '12501') {
+        return null;
+      }
+      throw Exception(_googlePlatformMessage(e));
     } catch (e) {
-      throw Exception('Failed to sign in with Google: $e');
+      final text = e.toString();
+      if (text.contains('already registered')) rethrow;
+      if (text.toLowerCase().contains('cancelled') ||
+          text.toLowerCase().contains('canceled')) {
+        return null;
+      }
+      if (text.contains('Exception:')) {
+        throw Exception(text.replaceAll('Exception: ', ''));
+      }
+      throw Exception(_googleUnknownMessage(text));
     }
+  }
+
+  String _googleAuthMessage(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'account-exists-with-different-credential':
+      case 'credential-already-in-use':
+      case 'email-already-in-use':
+        return 'This email address is already registered. Please sign in.';
+      case 'network-request-failed':
+        return 'Network error. Check your connection and try Google again.';
+      case 'invalid-credential':
+        return 'Google Sign-In could not be verified. Try again, or sign in with email.';
+      case 'user-disabled':
+        return 'This account has been disabled.';
+      default:
+        return e.message ?? 'Google Sign-In failed. Please try again.';
+    }
+  }
+
+  String _googlePlatformMessage(PlatformException e) {
+    final code = e.code.toLowerCase();
+    if (code.contains('canceled') ||
+        code.contains('cancelled') ||
+        code == '12501') {
+      return 'Google Sign-In was cancelled.';
+    }
+    if (code == '10' ||
+        code == 'sign_in_failed' ||
+        code.contains('developer_error') ||
+        (e.message ?? '').contains('ApiException: 10')) {
+      return 'Google Sign-In is not fully set up on this phone. '
+          'In Firebase, enable Google sign-in and add this app SHA-1 fingerprint, '
+          'then download a new google-services.json.';
+    }
+    if (code == '7' || code.contains('network')) {
+      return 'Network error. Check your connection and try Google again.';
+    }
+    return e.message ?? 'Google Sign-In failed. Please try again.';
+  }
+
+  String _googleUnknownMessage(String text) {
+    final lower = text.toLowerCase();
+    if (lower.contains('apiexception: 10') || lower.contains('sign_in_failed')) {
+      return 'Google Sign-In is not fully set up on this phone. '
+          'In Firebase, enable Google sign-in and add this app SHA-1 fingerprint, '
+          'then download a new google-services.json.';
+    }
+    if (lower.contains('canceled') || lower.contains('cancelled')) {
+      return 'Google Sign-In was cancelled.';
+    }
+    return 'Google Sign-In failed. Please try again.';
   }
 
   Future<void> sendPasswordResetEmail(String email) async {
@@ -166,6 +254,7 @@ class AuthService {
   Future<void> updateProfile({
     String? name,
     String? phone,
+    String? photoUrl,
     String? allergies,
     String? conditions,
     bool? notificationsEnabled,
@@ -181,6 +270,7 @@ class AuthService {
       data['name'] = trimmed;
     }
     if (phone != null) data['phone'] = phone;
+    if (photoUrl != null) data['photoUrl'] = photoUrl;
     if (allergies != null) data['allergies'] = allergies;
     if (conditions != null) data['conditions'] = conditions;
     if (notificationsEnabled != null) {
@@ -190,6 +280,11 @@ class AuthService {
     try {
       await _firestore.collection('users').doc(user.uid).update(data);
       if (name != null) await user.updateDisplayName(data['name'] as String);
+      if (photoUrl != null) {
+        try {
+          await user.updatePhotoURL(photoUrl);
+        } catch (_) {}
+      }
     } on FirebaseException catch (e) {
       throw Exception(e.message ?? 'Could not update profile.');
     }
@@ -197,7 +292,7 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
-      await GoogleSignIn().signOut();
+      await _googleSignIn.signOut();
     } catch (_) {}
     await _auth.signOut();
   }

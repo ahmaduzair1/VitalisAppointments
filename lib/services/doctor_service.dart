@@ -11,7 +11,13 @@ class DoctorService {
 
   Stream<QuerySnapshot<Map<String, dynamic>>> watchAll() => _doctors.snapshots();
 
-  Future<void> upsert(String? id, Map<String, dynamic> data) async {
+  static bool isStockPhoto(String url) {
+    final u = url.toLowerCase();
+    return u.contains('randomuser.me') || u.contains('pravatar.cc');
+  }
+
+  Future<String> upsert(String? id, Map<String, dynamic> data) async {
+    final image = '${data['image'] ?? ''}';
     final payload = {
       'name': data['name'],
       'specialty': data['specialty'],
@@ -21,18 +27,35 @@ class DoctorService {
       'reviews': (data['reviews'] is num) ? data['reviews'] : num.tryParse('${data['reviews']}') ?? 0,
       'patients': '${data['patients'] ?? '0'}',
       'fee': (data['fee'] is num) ? data['fee'] : num.tryParse('${data['fee']}') ?? 0,
-      'image': data['image'],
+      'image': isStockPhoto(image) ? '' : image,
       'availableToday': data['availableToday'] == true,
       'about': data['about'] ?? '',
     };
     try {
       if (id == null || id.isEmpty) {
-        await _doctors.add(payload);
-      } else {
-        await _doctors.doc(id).set(payload);
+        final doc = await _doctors.add(payload);
+        return doc.id;
       }
+      await _doctors.doc(id).set(payload);
+      return id;
     } on FirebaseException catch (e) {
       throw Exception(e.message ?? 'Could not save doctor.');
+    }
+  }
+
+  Future<int> stripStockPhotos() async {
+    try {
+      final snap = await _doctors.get();
+      var cleared = 0;
+      for (final doc in snap.docs) {
+        final image = '${doc.data()['image'] ?? ''}';
+        if (!isStockPhoto(image)) continue;
+        await doc.reference.update({'image': ''});
+        cleared++;
+      }
+      return cleared;
+    } catch (_) {
+      return 0;
     }
   }
 
@@ -64,7 +87,7 @@ class DoctorService {
       'reviews': 230,
       'patients': '2.3k',
       'fee': 2600,
-      'image': 'https://randomuser.me/api/portraits/women/12.jpg',
+      'image': '',
       'availableToday': true,
       'about':
           'Board-certified gynecologist focusing on prenatal care, fertility, and women\'s wellness.',
@@ -78,7 +101,7 @@ class DoctorService {
       'reviews': 90,
       'patients': '800',
       'fee': 1400,
-      'image': 'https://randomuser.me/api/portraits/men/29.jpg',
+      'image': '',
       'availableToday': true,
       'about':
           'Treats sinus, hearing, and throat conditions with a calm, clear approach for every age.',
@@ -92,7 +115,7 @@ class DoctorService {
       'reviews': 70,
       'patients': '600',
       'fee': 1200,
-      'image': 'https://randomuser.me/api/portraits/women/21.jpg',
+      'image': '',
       'availableToday': true,
       'about':
           'Gentle dentistry for check-ups, fillings, and smile care, with a focus on prevention.',
@@ -106,7 +129,7 @@ class DoctorService {
       'reviews': 160,
       'patients': '1.7k',
       'fee': 1800,
-      'image': 'https://randomuser.me/api/portraits/men/55.jpg',
+      'image': '',
       'availableToday': true,
       'about':
           'First-line care for fever, infections, and chronic conditions. Easy to talk to and thorough.',
@@ -120,7 +143,7 @@ class DoctorService {
       'reviews': 140,
       'patients': '1.4k',
       'fee': 2300,
-      'image': 'https://randomuser.me/api/portraits/women/33.jpg',
+      'image': '',
       'availableToday': false,
       'about':
           'Supports anxiety, depression, and stress with evidence-based therapy and medication when needed.',
@@ -134,7 +157,7 @@ class DoctorService {
       'reviews': 1200,
       'patients': '8k+',
       'fee': 3500,
-      'image': 'https://i.pravatar.cc/300?img=11',
+      'image': '',
       'availableToday': true,
       'about':
           'Interventional cardiologist specializing in preventive heart care and minimally invasive procedures.',
@@ -148,7 +171,7 @@ class DoctorService {
       'reviews': 960,
       'patients': '7k+',
       'fee': 1500,
-      'image': 'https://i.pravatar.cc/300?img=32',
+      'image': '',
       'availableToday': true,
       'about':
           'Warm, unhurried pediatric visits from newborns through teens, with parents involved every step.',
@@ -162,7 +185,7 @@ class DoctorService {
       'reviews': 1800,
       'patients': '12k+',
       'fee': 4000,
-      'image': 'https://i.pravatar.cc/300?img=12',
+      'image': '',
       'availableToday': false,
       'about':
           'Sports injuries and joint care, helping patients return to daily movement with a clear plan.',

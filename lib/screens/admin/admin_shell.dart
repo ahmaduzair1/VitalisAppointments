@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../profile_settings_screen.dart';
 import 'admin_dashboard_screen.dart';
 import 'admin_doctors_screen.dart';
+import 'admin_reviews_screen.dart';
 
 class AdminShell extends StatefulWidget {
   const AdminShell({super.key});
@@ -20,10 +21,19 @@ class _AdminShellState extends State<AdminShell> {
     final pages = const [
       AdminDashboardScreen(),
       AdminDoctorsScreen(),
+      AdminReviewsScreen(),
       ProfileSettingsScreen(),
     ];
 
-    return Scaffold(
+    return PopScope(
+      canPop: _index == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (_index != 0) {
+          setState(() => _index = 0);
+        }
+      },
+      child: Scaffold(
       body: pages[_index],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -42,12 +52,18 @@ class _AdminShellState extends State<AdminShell> {
             label: 'Doctors',
           ),
           NavigationDestination(
+            icon: Icon(Icons.rate_review_outlined),
+            selectedIcon: Icon(Icons.rate_review_rounded),
+            label: 'Feedback',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
             selectedIcon: Icon(Icons.person_rounded),
             label: 'Profile',
           ),
         ],
       ),
+    ),
     );
   }
 }

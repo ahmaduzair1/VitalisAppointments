@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../core/formatters.dart';
 import '../models/appointment.dart';
 import '../services/appointment_service.dart';
+import '../services/review_service.dart';
 import '../core/constants/page_transitions.dart';
 import '../widgets/vitalis_button.dart';
 import '../widgets/vitalis_card.dart';
 import 'reschedule_screen.dart';
+import 'review_screen.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final Appointment appointment;
@@ -152,6 +154,21 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     () => AppointmentService.instance.markPaid(_apt, method: 'clinic')),
               ),
             ],
+          ],
+          if (!_busy &&
+              !widget.isAdmin &&
+              ReviewService.instance.isEligible(_apt)) ...[
+            const SizedBox(height: 16),
+            VitalisButton(
+              label: 'Leave a review',
+              variant: VitalisButtonVariant.secondary,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  PageTransitions.slideRight(ReviewScreen(appointment: _apt)),
+                );
+              },
+            ),
           ],
         ],
       ),

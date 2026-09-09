@@ -56,7 +56,7 @@ class VitalisApp extends StatelessWidget {
       valueListenable: themeNotifier,
       builder: (_, currentMode, _) {
         return MaterialApp(
-          title: 'Vitalis Appointments',
+          title: 'Vitalis',
           debugShowCheckedModeBanner: false,
           themeMode: currentMode,
           theme: ThemeData(

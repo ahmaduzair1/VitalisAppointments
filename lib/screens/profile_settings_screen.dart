@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -8,18 +9,85 @@ import '../widgets/vitalis_card.dart';
 import '../widgets/theme_toggle.dart';
 import '../widgets/network_avatar.dart';
 import '../services/auth_service.dart';
+import '../services/image_upload_service.dart';
 import 'medical_history_screen.dart';
 import 'manage_visits_screen.dart';
 import 'payment_methods_screen.dart';
 import 'privacy_settings_screen.dart';
 
-class ProfileSettingsScreen extends StatelessWidget {
+class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});
+
+  @override
+  State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
+}
+
+class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
+  bool _uploading = false;
 
   Future<void> _handleLogout() async {
     try {
       await AuthService().signOut();
     } catch (_) {}
+  }
+
+  Future<void> _changePhoto() async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null || _uploading) return;
+
+    final source = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded),
+                title: const Text('Choose from gallery'),
+                onTap: () => Navigator.pop(ctx, 'gallery'),
+              ),
+              if (!kIsWeb)
+                ListTile(
+                  leading: const Icon(Icons.photo_camera_rounded),
+                  title: const Text('Take a photo'),
+                  onTap: () => Navigator.pop(ctx, 'camera'),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (source == null || !mounted) return;
+
+    Uint8List? bytes;
+    try {
+      bytes = await ImageUploadService.instance.pickPhoto(
+        camera: source == 'camera',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      return;
+    }
+    if (bytes == null || !mounted) return;
+
+    setState(() => _uploading = true);
+    try {
+      final url = await ImageUploadService.instance.uploadUserAvatar(bytes);
+      await AuthService().updateProfile(photoUrl: url);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   @override
@@ -58,11 +126,41 @@ class ProfileSettingsScreen extends StatelessWidget {
 
                 return Column(
                   children: [
-                    NetworkAvatar(
-                      url: photo,
-                      size: 96,
-                      radius: 48,
-                    ).animate().fadeIn(duration: 300.ms),
+                    GestureDetector(
+                      onTap: currentUser == null ? null : _changePhoto,
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          NetworkAvatar(
+                            url: photo,
+                            size: 96,
+                            radius: 48,
+                          ).animate().fadeIn(duration: 300.ms),
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: cs.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: cs.surface, width: 2),
+                            ),
+                            child: _uploading
+                                ? const Padding(
+                                    padding: EdgeInsets.all(7),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(
+                                    Icons.camera_alt_rounded,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Text(userName,
                         style: TextStyle(
@@ -80,6 +178,11 @@ class ProfileSettingsScreen extends StatelessWidget {
                         child: Text(currentUser!.email!,
                             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13)),
                       ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap the photo to upload a new one',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+                    ),
                   ],
                 );
               },

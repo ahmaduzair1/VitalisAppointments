@@ -1,0 +1,34 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == 'admin@vitalis.app';
+    }
+
+    function isImageUnderLimit() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Patient and staff profile photos. Public read so avatars render in lists.
+    match /users/{userId}/avatar.jpg {
+      allow read: if true;
+      allow write: if isOwner(userId) && isImageUnderLimit();
+    }
+
+    // Doctor roster photos. Only hospital admin may upload.
+    match /doctors/{doctorId}/photo.jpg {
+      allow read: if true;
+      allow write: if isAdmin() && isImageUnderLimit();
+    }
+  }
+}

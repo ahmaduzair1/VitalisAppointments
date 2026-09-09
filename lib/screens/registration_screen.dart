@@ -87,6 +87,34 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
+  Future<void> _signUpWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final user = await _authService.signInWithGoogle(isSignUp: true);
+      if (!mounted) return;
+      if (user == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final message = e.toString().replaceAll('Exception: ', '');
+      if (message.toLowerCase().contains('cancelled')) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      setState(() {
+        _errorMessage = message;
+        _isLoading = false;
+      });
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _goToSignIn() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -396,6 +424,27 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   label: 'Create Account',
                   isLoading: _isLoading,
                   onPressed: _isLoading ? null : _createAccount,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: cs.outline)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        'or',
+                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
+                      ),
+                    ),
+                    Expanded(child: Divider(color: cs.outline)),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                VitalisButton(
+                  label: 'Sign up with Google',
+                  variant: VitalisButtonVariant.secondary,
+                  icon: Icons.g_mobiledata_rounded,
+                  onPressed: _isLoading ? null : _signUpWithGoogle,
                 ),
                 ],
 

@@ -156,7 +156,30 @@ class AppointmentService {
       }
       rethrow;
     }
-    unawaited(_refreshReminders());
+    unawaited(
+      ReminderService.instance.onBooked(
+        Appointment(
+          id: appointmentRef.id,
+          patientId: user.uid,
+          patientName: patientName.trim().isEmpty
+              ? 'Patient'
+              : (patientName.trim().length > 80
+                  ? patientName.trim().substring(0, 80)
+                  : patientName.trim()),
+          doctorId: doctorId,
+          doctorName: '${doctor['name'] ?? 'Doctor'}',
+          doctorImage: '${doctor['image'] ?? ''}',
+          doctorSpecialty: '${doctor['specialty'] ?? 'General'}',
+          location: '${doctor['location'] ?? AppConfig.clinicName}',
+          date: date,
+          time: time,
+          fee: fee,
+          status: 'upcoming',
+          paymentStatus: payNow ? 'paid' : 'unpaid',
+          paymentMethod: paymentMethod,
+        ),
+      ),
+    );
   }
 
   Future<Appointment?> getById(String id) async {
@@ -224,7 +247,11 @@ class AppointmentService {
       }
       rethrow;
     }
-    unawaited(_refreshReminders());
+    unawaited(
+      ReminderService.instance.onRescheduled(
+        appointment.copyWith(date: date, time: time),
+      ),
+    );
   }
 
   Future<void> cancel(Appointment appointment) async {
@@ -254,12 +281,6 @@ class AppointmentService {
     await batch.commit();
     try {
       await ReminderService.instance.cancelFor(appointment.id);
-    } catch (_) {}
-  }
-
-  Future<void> _refreshReminders() async {
-    try {
-      await ReminderService.instance.sync();
     } catch (_) {}
   }
 
@@ -299,6 +320,12 @@ class AppointmentService {
       'appointmentId': appointment.id,
       'createdAt': FieldValue.serverTimestamp(),
     });
+
+    if (status == 'completed') {
+      try {
+        await ReminderService.instance.onVisitCompleted(appointment);
+      } catch (_) {}
+    }
   }
 
   Future<void> ensureMySlots() async {

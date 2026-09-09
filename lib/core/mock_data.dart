@@ -12,7 +12,7 @@ class MockData {
       'reviews': '1.2k',
       'patients': '8k+',
       'fee': 120,
-      'image': 'https://i.pravatar.cc/300?img=11',
+      'image': '',
       'location': 'Heart Center, Block B',
       'availableToday': true,
       'about':
@@ -26,7 +26,7 @@ class MockData {
       'reviews': '850',
       'patients': '5k+',
       'fee': 90,
-      'image': 'https://i.pravatar.cc/300?img=5',
+      'image': '',
       'location': 'Skin & Wellness Clinic',
       'availableToday': true,
       'about':
@@ -40,7 +40,7 @@ class MockData {
       'reviews': '2k+',
       'patients': '10k+',
       'fee': 150,
-      'image': 'https://i.pravatar.cc/300?img=9',
+      'image': '',
       'location': 'Neuro Wellness Institute',
       'availableToday': false,
       'about':
@@ -54,7 +54,7 @@ class MockData {
       'reviews': '1.8k',
       'patients': '12k+',
       'fee': 200,
-      'image': 'https://i.pravatar.cc/300?img=12',
+      'image': '',
       'location': 'City Bone & Joint Center',
       'availableToday': true,
       'about':
@@ -68,7 +68,7 @@ class MockData {
       'reviews': '960',
       'patients': '7k+',
       'fee': 80,
-      'image': 'https://i.pravatar.cc/300?img=32',
+      'image': '',
       'location': 'Children\'s Health Pavilion',
       'availableToday': true,
       'about':
@@ -82,7 +82,7 @@ class MockData {
       'reviews': '720',
       'patients': '4k+',
       'fee': 130,
-      'image': 'https://i.pravatar.cc/300?img=14',
+      'image': '',
       'location': 'Mind & Wellness Center',
       'availableToday': false,
       'about':
