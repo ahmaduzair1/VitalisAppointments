@@ -1,8 +1,373 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null; 
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - uid: string (required, immutable, == auth.uid)
+    //   - name: string (required, 1-80)
+    //   - email: string (required, email format, immutable)
+    //   - role: string (required, must be 'patient' on client create; immutable)
+    //   - phone: string (optional, 0-20)
+    //   - photoUrl: string (optional, empty or http(s) URL, max 500)
+    //   - allergies: string (optional, 0-1000)
+    //   - conditions: string (optional, 0-2000)
+    //   - notificationsEnabled: bool (optional)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: doctors
+    // Document ID: auto-id
+    // Fields:
+    //   - name, specialty, location, experience: string
+    //   - rating: number 0-5
+    //   - reviews: number >= 0
+    //   - patients: string
+    //   - fee: number 0-1000000
+    //   - image: string empty or URL
+    //   - availableToday: bool
+    //   - about: string 0-2000
+    //
+    // Collection: appointments
+    // Document ID: auto-id
+    // Fields:
+    //   - patientId: string (auth.uid on create, immutable)
+    //   - patientName: string 1-80
+    //   - doctorId, doctorName, doctorImage, doctorSpecialty, location: string (immutable)
+    //   - date, time: string (patient/admin may change on upcoming visits)
+    //   - fee: number
+    //   - status: upcoming | completed | cancelled
+    //   - paymentStatus: paid | unpaid
+    //   - paymentMethod: card | clinic | wallet
+    //   - createdAt: timestamp
+    //   - paidAt: timestamp (optional, required when paid)
+    //
+    // Collection: bookedSlots
+    // Document ID: doctorId|date|time (one lock per doctor visit slot)
+    // Fields:
+    //   - doctorId, date, time, appointmentId: string
+    //   - createdAt: timestamp
+    // Authenticated patients may read locks (no patient names) so the
+    // booking UI can hide taken times. Create is first-writer-wins.
+    //
+    // Document ID: auto-id
+    // Fields:
+    //   - userId: string
+    //   - title: string 1-120
+    //   - body: string 1-500
+    //   - type: booking | payment | cancel | system | reminder
+    //   - isRead: bool
+    //   - appointmentId: string 0-128
+    //   - createdAt: timestamp
+    //
+    // Admin bootstrap: verified email admin@vitalis.app (not a self-assignable role).
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated()
+        && request.auth.token.email == 'admin@vitalis.app';
+    }
+
+    function isValidEmail(email) {
+      return email is string
+        && email.size() >= 5
+        && email.size() <= 120
+        && email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function isValidUrlOrEmpty(url) {
+      return url is string
+        && url.size() <= 500
+        && (url.size() == 0 || url.matches('^https://.*') || url.matches('^http://.*'));
+    }
+
+    function validString(field, minLen, maxLen) {
+      return request.resource.data[field] is string
+        && request.resource.data[field].size() >= minLen
+        && request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasOnly([
+          'uid', 'name', 'email', 'role', 'phone', 'photoUrl',
+          'allergies', 'conditions', 'notificationsEnabled', 'createdAt'
+        ])
+        && data.keys().hasAll(['uid', 'name', 'email', 'role', 'createdAt'])
+        && data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && isValidEmail(data.email)
+        && data.role == 'patient'
+        && data.createdAt is timestamp
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 20))
+        && (!('photoUrl' in data) || isValidUrlOrEmpty(data.photoUrl))
+        && (!('allergies' in data) || (data.allergies is string && data.allergies.size() <= 1000))
+        && (!('conditions' in data) || (data.conditions is string && data.conditions.size() <= 2000))
+        && (!('notificationsEnabled' in data) || data.notificationsEnabled is bool);
+    }
+
+    function isValidDoctor(data) {
+      return data.keys().hasOnly([
+          'name', 'specialty', 'location', 'experience', 'rating', 'reviews',
+          'patients', 'fee', 'image', 'availableToday', 'about'
+        ])
+        && data.keys().hasAll([
+          'name', 'specialty', 'location', 'experience', 'rating', 'reviews',
+          'patients', 'fee', 'image', 'availableToday', 'about'
+        ])
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.specialty is string && data.specialty.size() >= 1 && data.specialty.size() <= 60
+        && data.location is string && data.location.size() >= 1 && data.location.size() <= 120
+        && data.experience is string && data.experience.size() >= 1 && data.experience.size() <= 40
+        && data.rating is number && data.rating >= 0 && data.rating <= 5
+        && data.reviews is number && data.reviews >= 0 && data.reviews <= 1000000
+        && data.patients is string && data.patients.size() <= 20
+        && data.fee is number && data.fee >= 0 && data.fee <= 1000000
+        && isValidUrlOrEmpty(data.image)
+        && data.availableToday is bool
+        && data.about is string && data.about.size() <= 2000;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasOnly([
+          'patientId', 'patientName', 'doctorId', 'doctorName', 'doctorImage',
+          'doctorSpecialty', 'location', 'date', 'time', 'fee', 'status',
+          'paymentStatus', 'paymentMethod', 'createdAt', 'paidAt'
+        ])
+        && data.keys().hasAll([
+          'patientId', 'patientName', 'doctorId', 'doctorName', 'doctorImage',
+          'doctorSpecialty', 'location', 'date', 'time', 'fee', 'status',
+          'paymentStatus', 'paymentMethod', 'createdAt'
+        ])
+        && data.patientId is string && data.patientId.size() > 0 && data.patientId.size() <= 128
+        && data.patientName is string && data.patientName.size() >= 1 && data.patientName.size() <= 80
+        && data.doctorId is string && data.doctorId.size() >= 1 && data.doctorId.size() <= 128
+        && data.doctorName is string && data.doctorName.size() >= 1 && data.doctorName.size() <= 80
+        && isValidUrlOrEmpty(data.doctorImage)
+        && data.doctorSpecialty is string && data.doctorSpecialty.size() >= 1 && data.doctorSpecialty.size() <= 60
+        && data.location is string && data.location.size() >= 1 && data.location.size() <= 120
+        && data.date is string && data.date.size() >= 6 && data.date.size() <= 40
+        && data.time is string && data.time.size() >= 4 && data.time.size() <= 20
+        && data.fee is number && data.fee >= 0 && data.fee <= 1000000
+        && data.status in ['upcoming', 'completed', 'cancelled']
+        && data.paymentStatus in ['paid', 'unpaid']
+        && data.paymentMethod in ['card', 'clinic', 'wallet']
+        && data.createdAt is timestamp
+        && (
+          (data.paymentStatus == 'unpaid' && !('paidAt' in data))
+          || (data.paymentStatus == 'paid' && data.paidAt is timestamp)
+        );
+    }
+
+    function isValidBookedSlot(data) {
+      return data.keys().hasOnly([
+          'doctorId', 'date', 'time', 'appointmentId', 'createdAt'
+        ])
+        && data.keys().hasAll([
+          'doctorId', 'date', 'time', 'appointmentId', 'createdAt'
+        ])
+        && data.doctorId is string && data.doctorId.size() >= 1 && data.doctorId.size() <= 128
+        && data.date is string && data.date.size() >= 6 && data.date.size() <= 40
+        && data.time is string && data.time.size() >= 4 && data.time.size() <= 20
+        && data.appointmentId is string && data.appointmentId.size() >= 1
+          && data.appointmentId.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasOnly([
+          'userId', 'title', 'body', 'type', 'isRead', 'appointmentId', 'createdAt'
+        ])
+        && data.keys().hasAll([
+          'userId', 'title', 'body', 'type', 'isRead', 'appointmentId', 'createdAt'
+        ])
+        && data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 120
+        && data.body is string && data.body.size() >= 1 && data.body.size() <= 500
+        && data.type in ['booking', 'payment', 'cancel', 'system', 'reminder']
+        && data.isRead is bool
+        && data.appointmentId is string && data.appointmentId.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId)
+        && isValidUser(request.resource.data)
+        && request.resource.data.uid == userId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == 'patient'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update: if isValidUser(request.resource.data)
+        && request.resource.data.uid == request.auth.uid
+        && (
+          request.resource.data.uid == resource.data.uid
+          || !('uid' in resource.data)
+        )
+        && (
+          request.resource.data.email == resource.data.email
+          || (!('email' in resource.data)
+            && request.resource.data.email == request.auth.token.email)
+        )
+        && request.resource.data.role == 'patient'
+        && (
+          request.resource.data.role == resource.data.role
+          || !('role' in resource.data)
+        )
+        && (
+          request.resource.data.createdAt == resource.data.createdAt
+          || (!('createdAt' in resource.data)
+            && request.resource.data.createdAt == request.time)
+        )
+        && (isOwner(userId) || isAdmin());
+
+      allow delete: if false;
+    }
+
+    match /doctors/{doctorId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin() && isValidDoctor(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated()
+        && (resource.data.patientId == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated()
+        && isValidAppointment(request.resource.data)
+        && request.resource.data.patientId == request.auth.uid
+        && request.resource.data.status == 'upcoming'
+        && request.resource.data.createdAt == request.time
+        && (
+          (request.resource.data.paymentMethod == 'clinic'
+            && request.resource.data.paymentStatus == 'unpaid')
+          || (request.resource.data.paymentMethod in ['card', 'wallet']
+            && request.resource.data.paymentStatus == 'paid'
+            && request.resource.data.paidAt == request.time)
+        );
+
+      allow update: if isAuthenticated()
+        && isValidAppointment(request.resource.data)
+        && request.resource.data.patientId == resource.data.patientId
+        && request.resource.data.patientName == resource.data.patientName
+        && request.resource.data.doctorId == resource.data.doctorId
+        && request.resource.data.doctorName == resource.data.doctorName
+        && request.resource.data.doctorImage == resource.data.doctorImage
+        && request.resource.data.doctorSpecialty == resource.data.doctorSpecialty
+        && request.resource.data.location == resource.data.location
+        && request.resource.data.fee == resource.data.fee
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+          (
+            resource.data.patientId == request.auth.uid
+            && (
+              (
+                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+                && resource.data.status == 'upcoming'
+                && request.resource.data.status == 'cancelled'
+              )
+              || (
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['paymentStatus', 'paymentMethod', 'paidAt'])
+                && resource.data.paymentStatus == 'unpaid'
+                && request.resource.data.paymentStatus == 'paid'
+                && request.resource.data.paidAt == request.time
+              )
+              || (
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['date', 'time'])
+                && resource.data.status == 'upcoming'
+                && request.resource.data.status == 'upcoming'
+              )
+            )
+          )
+          || (
+            isAdmin()
+            && (
+              (
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['status', 'paymentStatus', 'paymentMethod', 'paidAt'])
+                && (
+                  resource.data.status == request.resource.data.status
+                  || (resource.data.status == 'upcoming'
+                    && request.resource.data.status in ['cancelled', 'completed'])
+                )
+              )
+              || (
+                request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['date', 'time'])
+                && resource.data.status == 'upcoming'
+                && request.resource.data.status == 'upcoming'
+              )
+            )
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated()
+        && (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow create: if isAuthenticated()
+        && isValidNotification(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.isRead == false
+        && (
+          request.resource.data.userId == request.auth.uid
+          || isAdmin()
+        );
+
+      allow update: if isAuthenticated()
+        && isValidNotification(request.resource.data)
+        && (resource.data.userId == request.auth.uid || isAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead'])
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.body == resource.data.body
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.appointmentId == resource.data.appointmentId
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if false;
+    }
+
+    match /bookedSlots/{slotId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isAuthenticated()
+        && isValidBookedSlot(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && slotId == request.resource.data.doctorId + '|'
+          + request.resource.data.date + '|'
+          + request.resource.data.time;
+
+      allow update: if false;
+
+      allow delete: if isAuthenticated()
+        && (
+          isAdmin()
+          || (
+            exists(/databases/$(database)/documents/appointments/$(resource.data.appointmentId))
+            && get(/databases/$(database)/documents/appointments/$(resource.data.appointmentId))
+              .data.patientId == request.auth.uid
+          )
+        );
     }
   }
 }

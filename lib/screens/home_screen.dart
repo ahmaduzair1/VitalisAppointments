@@ -4,12 +4,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/page_transitions.dart';
+import '../core/schedule.dart';
+import '../models/appointment.dart';
+import '../services/appointment_service.dart';
 import '../widgets/section_header.dart';
 import '../widgets/category_chip.dart';
 import '../widgets/doctor_card.dart';
+import '../widgets/vitalis_card.dart';
+import '../widgets/shimmer_loading.dart';
+import '../widgets/network_avatar.dart';
 import 'doctor_list_screen.dart';
 import 'doctor_profile_screen.dart';
 import 'alerts_screen.dart';
+import 'appointment_detail_screen.dart';
 import 'profile_settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,8 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
     {'label': 'General', 'icon': Icons.medical_services_rounded},
     {'label': 'Dentist', 'icon': Icons.clean_hands_rounded},
     {'label': 'Heart', 'icon': Icons.favorite_rounded},
-    {'label': 'Brain', 'icon': Icons.psychology_rounded},
-    {'label': 'Eye', 'icon': Icons.visibility_rounded},
+    {'label': 'Women', 'icon': Icons.pregnant_woman_rounded},
+    {'label': 'ENT', 'icon': Icons.hearing_rounded},
+    {'label': 'Mind', 'icon': Icons.psychology_rounded},
+    {'label': 'Child', 'icon': Icons.child_care_rounded},
     {'label': 'Bone', 'icon': Icons.accessibility_new_rounded},
   ];
 
@@ -43,12 +52,16 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (_selectedCategory) {
       case 'Heart':
         return specialty.contains('cardio');
-      case 'Brain':
-        return specialty.contains('neuro');
+      case 'Women':
+        return specialty.contains('gynecol') || specialty.contains('obstet');
+      case 'ENT':
+        return specialty.contains('ent');
+      case 'Mind':
+        return specialty.contains('psychiatr') || specialty.contains('psycholog');
+      case 'Child':
+        return specialty.contains('pediatr');
       case 'Bone':
         return specialty.contains('ortho') || specialty.contains('bone');
-      case 'Eye':
-        return specialty.contains('ophthalmol') || specialty.contains('eye');
       case 'Dentist':
         return specialty.contains('dentist');
       case 'General':
@@ -132,11 +145,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               width: 2,
                             ),
                           ),
-                          child: CircleAvatar(
+                          child: NetworkAvatar(
+                            url: currentUser?.photoURL ?? '',
+                            size: 40,
                             radius: 20,
-                            backgroundImage: const NetworkImage(
-                                'https://i.pravatar.cc/150?img=44'),
-                            backgroundColor: cs.onSurfaceVariant.withValues(alpha: 0.08),
                           ),
                         ),
                       ),
@@ -144,6 +156,72 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ).animate().fadeIn(duration: 400.ms),
+            ),
+          ),
+
+          SliverToBoxAdapter(
+            child: StreamBuilder<List<Appointment>>(
+              stream: AppointmentService.instance.watchMine(),
+              builder: (context, snapshot) {
+                final upcoming = (snapshot.data ?? [])
+                    .where((a) => a.isUpcoming)
+                    .toList();
+                Appointment? next;
+                for (final apt in upcoming) {
+                  final p = VisitSchedule.proximity(apt.date, apt.time);
+                  if (p == VisitProximity.today || p == VisitProximity.tomorrow) {
+                    next = apt;
+                    break;
+                  }
+                }
+                if (next == null) return const SizedBox.shrink();
+                final today =
+                    VisitSchedule.proximity(next.date, next.time) == VisitProximity.today;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                  child: VitalisCard(
+                    onTap: () => Navigator.push(
+                      context,
+                      PageTransitions.slideRight(
+                        AppointmentDetailScreen(appointment: next!),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.notifications_active_rounded,
+                          color: cs.primary,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                today ? 'Visit today' : 'Visit tomorrow',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: cs.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${next.doctorName} at ${next.time}. Reschedule or cancel from Settings.',
+                                style: TextStyle(
+                                  color: cs.onSurfaceVariant,
+                                  fontSize: 13,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
 
@@ -259,8 +337,36 @@ class _HomeScreenState extends State<HomeScreen> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance.collection('doctors').snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return SizedBox(
+                    height: 190,
+                    child: Center(
+                      child: Text(
+                        'Could not load doctors.',
+                        style: TextStyle(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  );
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const SizedBox(height: 190, child: Center(child: CircularProgressIndicator()));
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 0, 0),
+                    child: SizedBox(
+                      height: 190,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: 3,
+                        itemBuilder: (context, index) => const Padding(
+                          padding: EdgeInsets.only(right: 12),
+                          child: ShimmerLoading(
+                            width: 160,
+                            height: 190,
+                            borderRadius: 32,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const SizedBox(height: 190, child: Center(child: Text("No doctors found in Database")));
@@ -331,8 +437,25 @@ class _HomeScreenState extends State<HomeScreen> {
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance.collection('doctors').snapshots(),
             builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text(
+                      'Could not load doctors.',
+                      style: TextStyle(color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                );
+              }
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  sliver: SliverList.builder(
+                    itemCount: 4,
+                    itemBuilder: (context, index) => ShimmerLoading.doctorCard(),
+                  ),
+                );
               }
               if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                 return const SliverToBoxAdapter(child: SizedBox());
@@ -341,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Filter for 'availableToday' = true
               final availableTodayDocs = snapshot.data!.docs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                return data['availableToday'] == true && _matchesCategory(data);
+                return data['availableToday'] != false && _matchesCategory(data);
               }).toList();
 
               if (availableTodayDocs.isEmpty) {

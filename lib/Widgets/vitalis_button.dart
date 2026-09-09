@@ -96,7 +96,7 @@ class _VitalisButtonState extends State<VitalisButton>
             borderRadius: BorderRadius.circular(100),
             boxShadow: [
               BoxShadow(
-                color: cs.primary.withOpacity(0.18),
+                color: cs.primary.withValues(alpha: 0.18),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),

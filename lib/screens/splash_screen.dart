@@ -1,40 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../core/constants/page_transitions.dart';
-import 'onboarding_screen.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class SplashScreen extends StatelessWidget {
+  /// When true, this is only a loading view (no navigation).
+  final bool hold;
 
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageTransitions.fade(const OnboardingScreen()),
-        );
-      }
-    });
-  }
+  const SplashScreen({super.key, this.hold = false});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ── Animated logo ─────────────────────────────
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -43,13 +24,13 @@ class _SplashScreenState extends State<SplashScreen> {
                   end: Alignment.bottomRight,
                   colors: [
                     cs.primary,
-                    cs.primary.withOpacity(0.8),
+                    cs.primary.withValues(alpha: 0.8),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
-                    color: cs.primary.withOpacity(0.3),
+                    color: cs.primary.withValues(alpha: 0.3),
                     blurRadius: 32,
                     offset: const Offset(0, 12),
                   ),
@@ -70,8 +51,6 @@ class _SplashScreenState extends State<SplashScreen> {
                 )
                 .fadeIn(duration: 500.ms),
             const SizedBox(height: 32),
-
-            // ── Brand name ────────────────────────────────
             Text(
               'Vitalis',
               style: TextStyle(
@@ -82,22 +61,27 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             )
                 .animate(delay: 400.ms)
-                .fadeIn(duration: 500.ms)
-                .slideY(begin: 0.3, end: 0, duration: 500.ms, curve: Curves.easeOut),
-
+                .fadeIn(duration: 500.ms),
             const SizedBox(height: 8),
-
             Text(
-              'Your Health, Simplified',
+              'Care that feels simple',
               style: TextStyle(
                 color: cs.onSurfaceVariant,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
-                letterSpacing: 0.2,
               ),
-            )
-                .animate(delay: 700.ms)
-                .fadeIn(duration: 500.ms),
+            ).animate(delay: 700.ms).fadeIn(duration: 500.ms),
+            if (hold) ...[
+              const SizedBox(height: 28),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  color: cs.primary,
+                ),
+              ),
+            ],
           ],
         ),
       ),

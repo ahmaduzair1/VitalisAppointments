@@ -2,12 +2,76 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../core/app_config.dart';
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ── 1. Sign Up (Handles "User Already Exists") ──────────
-  Future<User?> signUpWithEmailPassword(String email, String password, String name) async {
+  User? get currentUser => _auth.currentUser;
+
+  bool get isAdmin => AppConfig.isAdminEmail(_auth.currentUser?.email);
+
+  Future<void> ensureUserDocument() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      final ref = _firestore.collection('users').doc(user.uid);
+      final snap = await ref.get();
+      if (!snap.exists) {
+        await _createUserDocument(user, user.displayName ?? 'Patient');
+        return;
+      }
+      final data = snap.data() ?? {};
+      final patch = <String, dynamic>{};
+      if (data['role'] == null) patch['role'] = 'patient';
+      if (data['uid'] == null) patch['uid'] = user.uid;
+      if (data['email'] == null) patch['email'] = user.email ?? '';
+      if (data['phone'] == null) patch['phone'] = '';
+      if (data['photoUrl'] == null) patch['photoUrl'] = user.photoURL ?? '';
+      if (data['allergies'] == null) patch['allergies'] = '';
+      if (data['conditions'] == null) patch['conditions'] = '';
+      if (data['notificationsEnabled'] == null) {
+        patch['notificationsEnabled'] = true;
+      }
+      if (data['createdAt'] == null) {
+        patch['createdAt'] = FieldValue.serverTimestamp();
+      }
+      if (patch.isNotEmpty) await ref.update(patch);
+    } catch (_) {}
+  }
+
+  Future<String> currentPatientName() async {
+    final user = _auth.currentUser;
+    if (user == null) return 'Patient';
+    try {
+      final doc = await _firestore.collection('users').doc(user.uid).get();
+      final name = doc.data()?['name'] as String?;
+      if (name != null && name.trim().isNotEmpty) return name.trim();
+    } catch (_) {}
+    if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
+      return user.displayName!.trim();
+    }
+    return 'Patient';
+  }
+
+  Future<void> _createUserDocument(User user, String name) async {
+    await _firestore.collection('users').doc(user.uid).set({
+      'uid': user.uid,
+      'name': name,
+      'email': user.email ?? '',
+      'role': 'patient',
+      'phone': '',
+      'photoUrl': user.photoURL ?? '',
+      'allergies': '',
+      'conditions': '',
+      'notificationsEnabled': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<User?> signUpWithEmailPassword(
+      String email, String password, String name) async {
     try {
       UserCredential credential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -15,17 +79,16 @@ class AuthService {
       );
 
       if (credential.user != null) {
-        await _firestore.collection('users').doc(credential.user!.uid).set({
-          'uid': credential.user!.uid,
-          'name': name,
-          'email': email,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        final trimmed = name.trim().isEmpty
+            ? 'Patient'
+            : (name.trim().length > 80 ? name.trim().substring(0, 80) : name.trim());
+        await credential.user!.updateDisplayName(trimmed);
+        await _createUserDocument(credential.user!, trimmed);
+        await credential.user!.sendEmailVerification();
       }
 
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      // Specifically catch the email-in-use error
       if (e.code == 'email-already-in-use') {
         throw Exception('User already exists, please login.');
       }
@@ -35,7 +98,6 @@ class AuthService {
     }
   }
 
-  // ── 2. Sign In (Handles "Wrong Password") ───────────────
   Future<User?> signInWithEmailPassword(String email, String password) async {
     try {
       UserCredential credential = await _auth.signInWithEmailAndPassword(
@@ -44,7 +106,6 @@ class AuthService {
       );
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      // Firebase uses 'invalid-credential' or 'wrong-password'
       if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
         throw Exception('Password is incorrect.');
       } else if (e.code == 'user-not-found') {
@@ -56,35 +117,35 @@ class AuthService {
     }
   }
 
-  // ── 3. Google Sign In (Forces Account Picker) ───────────
   Future<User?> signInWithGoogle() async {
     try {
-      // THIS is the magic line that forces the account popup to show
       await GoogleSignIn().signOut();
 
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return null; // The user canceled the sign-in
+      if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
 
-      // Save user to Firestore if they don't exist yet
       if (userCredential.user != null) {
-        final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .get();
 
         if (!userDoc.exists) {
-          await _firestore.collection('users').doc(userCredential.user!.uid).set({
-            'uid': userCredential.user!.uid,
-            'name': userCredential.user!.displayName ?? 'Google User',
-            'email': userCredential.user!.email,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+          await _createUserDocument(
+            userCredential.user!,
+            userCredential.user!.displayName ?? 'Google User',
+          );
         }
       }
 
@@ -94,7 +155,6 @@ class AuthService {
     }
   }
 
-  // Send Password Reset Email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -103,11 +163,44 @@ class AuthService {
     }
   }
 
-  // Sign Out
+  Future<void> updateProfile({
+    String? name,
+    String? phone,
+    String? allergies,
+    String? conditions,
+    bool? notificationsEnabled,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Please sign in.');
+
+    final data = <String, dynamic>{};
+    if (name != null) {
+      final trimmed = name.trim().isEmpty
+          ? 'Patient'
+          : (name.trim().length > 80 ? name.trim().substring(0, 80) : name.trim());
+      data['name'] = trimmed;
+    }
+    if (phone != null) data['phone'] = phone;
+    if (allergies != null) data['allergies'] = allergies;
+    if (conditions != null) data['conditions'] = conditions;
+    if (notificationsEnabled != null) {
+      data['notificationsEnabled'] = notificationsEnabled;
+    }
+    if (data.isEmpty) return;
+    try {
+      await _firestore.collection('users').doc(user.uid).update(data);
+      if (name != null) await user.updateDisplayName(data['name'] as String);
+    } on FirebaseException catch (e) {
+      throw Exception(e.message ?? 'Could not update profile.');
+    }
+  }
+
   Future<void> signOut() async {
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
     await _auth.signOut();
   }
 
-  // Stream to listen to auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 }

@@ -3,7 +3,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/constants/page_transitions.dart';
 import '../widgets/vitalis_button.dart';
 import 'login_screen.dart';
-import 'main_tab_navigator.dart';
 import '../services/auth_service.dart';
 
 class RegistrationScreen extends StatefulWidget {
@@ -24,6 +23,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   String? _passwordError;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _accountCreated = false;
 
   @override
   void dispose() {
@@ -54,6 +54,47 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     setState(() {});
     return _nameError == null && _emailError == null && _passwordError == null;
+  }
+
+  Future<void> _createAccount() async {
+    if (!_validateForm()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signUpWithEmailPassword(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _nameController.text.trim(),
+      );
+      try {
+        await _authService.signOut();
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _accountCreated = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _goToSignIn() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      PageTransitions.fade(const LoginScreen()),
+    );
   }
 
   @override
@@ -88,12 +129,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [cs.primary, cs.primary.withOpacity(0.8)],
+                        colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: cs.primary.withOpacity(0.25),
+                          color: cs.primary.withValues(alpha: 0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -142,12 +183,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(24),
                     border: theme.brightness == Brightness.dark
-                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                         : null,
                     boxShadow: theme.brightness == Brightness.light
                         ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -190,12 +231,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(24),
                     border: theme.brightness == Brightness.dark
-                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                         : null,
                     boxShadow: theme.brightness == Brightness.light
                         ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -238,12 +279,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(24),
                     border: theme.brightness == Brightness.dark
-                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                         : null,
                     boxShadow: theme.brightness == Brightness.light
                         ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -288,7 +329,40 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
                 const SizedBox(height: 32),
 
-                // ── Backend Error Message ─────────────────
+                if (_accountCreated) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: cs.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Check your email',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'We sent a verification link to ${_emailController.text.trim()}. After you verify, come back and sign in.',
+                          style: TextStyle(color: cs.onSurfaceVariant, height: 1.45),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  VitalisButton(
+                    label: 'Go to Sign In',
+                    onPressed: _goToSignIn,
+                  ),
+                ] else ...[
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
@@ -296,10 +370,10 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.08),
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.error.withOpacity(0.18),
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.18),
                         ),
                       ),
                       child: Row(
@@ -321,38 +395,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                 VitalisButton(
                   label: 'Create Account',
                   isLoading: _isLoading,
-                  onPressed: () async {
-                    if (!_validateForm()) return;
-
-                    setState(() {
-                      _isLoading = true;
-                      _errorMessage = null;
-                    });
-
-                    try {
-                      // CHANGED: We now pass the name as the 3rd parameter!
-                      await _authService.signUpWithEmailPassword(
-                        _emailController.text.trim(),
-                        _passwordController.text.trim(),
-                        _nameController.text.trim(),
-                      );
-
-                      if (!mounted) return;
-
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        PageTransitions.fadeSlide(const MainTabNavigator()),
-                            (route) => false,
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      setState(() {
-                        _errorMessage = e.toString().replaceAll('Exception: ', '');
-                        _isLoading = false;
-                      });
-                    }
-                  },
+                  onPressed: _isLoading ? null : _createAccount,
                 ),
+                ],
 
                 const SizedBox(height: 24),
 
@@ -366,10 +411,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                         style: TextStyle(color: cs.onSurfaceVariant),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.pushReplacement(
-                          context,
-                          PageTransitions.fade(const LoginScreen()),
-                        ),
+                        onTap: _goToSignIn,
                         child: Text(
                           'Sign In',
                           style: TextStyle(

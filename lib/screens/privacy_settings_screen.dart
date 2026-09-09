@@ -1,94 +1,88 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../core/constants/app_spacing.dart';
+import '../services/auth_service.dart';
+import '../services/reminder_service.dart';
 import '../widgets/vitalis_card.dart';
 
-class PrivacySettingsScreen extends StatelessWidget {
+class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
 
   @override
+  State<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
+}
+
+class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
+  bool _enabled = true;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final doc =
+          await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      _enabled = doc.data()?['notificationsEnabled'] != false;
+    } catch (_) {
+      _enabled = true;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save(bool value) async {
+    final previous = _enabled;
+    setState(() => _enabled = value);
+    try {
+      await AuthService().updateProfile(notificationsEnabled: value);
+      if (value) {
+        await ReminderService.instance.sync();
+      } else {
+        await ReminderService.instance.cancelAllLocal();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _enabled = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not update reminders: $e')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Privacy Settings'),
-        elevation: 0.5,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Data & Privacy',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
+      appBar: AppBar(title: const Text('Notifications')),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+              children: [
+                Text(
+                  'Visit notes and payment status are visible to hospital admin. Other patients cannot open your file.',
+                  style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
                 ),
-              ).animate().fadeIn(duration: 400.ms),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Control how your health data is shared and manage HIPAA compliance settings.',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 14,
+                const SizedBox(height: 16),
+                VitalisCard(
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Visit reminders'),
+                    subtitle: const Text(
+                      'Alert the day before and on the day of your appointment. You can reschedule or cancel from Settings.',
+                    ),
+                    value: _enabled,
+                    onChanged: _save,
+                  ),
                 ),
-              ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Coming Soon Section
-              VitalisCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(26),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.privacy_tip_rounded,
-                        color: theme.colorScheme.primary,
-                        size: 40,
-                      ),
-                    ).animate().scale(
-                          begin: const Offset(0.8, 0.8),
-                          end: const Offset(1, 1),
-                          duration: 500.ms,
-                          curve: Curves.easeOutBack,
-                        ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Coming Soon',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Privacy settings and HIPAA consent management are being implemented.\nYour data security is our top priority.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                        height: 1.6,
-                      ),
-                    ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
-                  ],
-                ),
-              ).animate(delay: 300.ms).fadeIn(duration: 500.ms),
-            ],
-          ),
-        ),
-      ),
+              ],
+            ),
     );
   }
 }

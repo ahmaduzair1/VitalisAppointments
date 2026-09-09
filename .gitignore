@@ -32,6 +32,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+android/build/
+analyze_output.txt
 
 # Symbolication related
 app.*.symbols

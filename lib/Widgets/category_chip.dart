@@ -32,12 +32,12 @@ class CategoryChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? cs.primary
-                : cs.onSurface.withOpacity(0.05),
+                : cs.onSurface.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(20),
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: cs.primary.withOpacity(0.3),
+                      color: cs.primary.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),

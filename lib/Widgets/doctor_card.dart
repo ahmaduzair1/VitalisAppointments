@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../core/formatters.dart';
+import 'network_avatar.dart';
 import 'vitalis_card.dart';
 
 /// Premium doctor card with avatar, specialty, rating, and availability.
@@ -17,12 +19,13 @@ class DoctorCard extends StatelessWidget {
 
   // ── Safe accessors ──────────────────────────────────────
   String get _name => doctor['name'] as String? ?? 'Unknown Doctor';
+  String get _id => '${doctor['id'] ?? _name}';
   String get _specialty => doctor['specialty'] as String? ?? 'General';
   String get _image => doctor['image'] as String? ?? '';
   String get _rating => (doctor['rating'] ?? 0.0).toString();
   String get _reviews => (doctor['reviews'] ?? '0').toString();
-  String get _fee => (doctor['fee'] ?? 0).toString();
-  bool get _isAvailable => doctor['availableToday'] == true;
+  String get _fee => Formatters.fee(doctor['fee']);
+  bool get _isAvailable => doctor['availableToday'] != false;
 
   @override
   Widget build(BuildContext context) {
@@ -35,33 +38,8 @@ class DoctorCard extends StatelessWidget {
     return _buildFullCard(context, theme, cs);
   }
 
-  /// Builds either a NetworkImage or a fallback icon for missing images.
-  Widget _buildAvatarImage(ColorScheme cs, double size, double radius) {
-    if (_image.isNotEmpty) {
-      return Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          color: cs.onSurfaceVariant.withValues(alpha: 0.08),
-          image: DecorationImage(
-            image: NetworkImage(_image),
-            fit: BoxFit.cover,
-          ),
-        ),
-      );
-    }
-    // Fallback: icon placeholder
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        color: cs.primary.withValues(alpha: 0.1),
-      ),
-      child: Icon(Icons.person_rounded,
-          size: size * 0.5, color: cs.primary.withValues(alpha: 0.6)),
-    );
+  Widget _buildAvatarImage(double size, double radius) {
+    return NetworkAvatar(url: _image, size: size, radius: radius);
   }
 
   /// Horizontal scrolling compact card (for "Top Doctors" row).
@@ -95,8 +73,8 @@ class DoctorCard extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Hero(
-                  tag: 'doctor_avatar_$_name',
-                  child: _buildAvatarImage(cs, 80, 24),
+                  tag: 'doctor_compact_$_id',
+                  child: _buildAvatarImage(80, 24),
                 ),
                 Positioned(
                   bottom: -8,
@@ -176,39 +154,17 @@ class DoctorCard extends StatelessWidget {
             clipBehavior: Clip.none,
             children: [
               Hero(
-                tag: 'doctor_avatar_$_name',
-                child: _image.isNotEmpty
-                    ? Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: cs.outline.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.08),
-                          image: DecorationImage(
-                            image: NetworkImage(_image),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      )
-                    : Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(
-                            color: cs.outline.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                          color: cs.primary.withValues(alpha: 0.1),
-                        ),
-                        child: Icon(Icons.person_rounded,
-                            size: 40,
-                            color: cs.primary.withValues(alpha: 0.6)),
-                      ),
+                tag: 'doctor_avatar_$_id',
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: _buildAvatarImage(80, 22),
+                ),
               ),
               Positioned(
                 bottom: -4,
@@ -307,7 +263,7 @@ class DoctorCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Text(
-                      '\$$_fee',
+                      _fee,
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,

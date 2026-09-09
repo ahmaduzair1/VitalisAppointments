@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import '../core/constants/app_spacing.dart';
 import '../widgets/vitalis_card.dart';
 
 class PaymentMethodsScreen extends StatelessWidget {
@@ -8,87 +6,54 @@ class PaymentMethodsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Payment Methods'),
-        elevation: 0.5,
+      appBar: AppBar(title: const Text('How you pay')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        children: [
+          Text(
+            'Pay the consultation fee in the app when you book, or settle at the clinic desk. The admin board shows who is still unpaid.',
+            style: TextStyle(color: cs.onSurfaceVariant, height: 1.5),
+          ),
+          const SizedBox(height: 20),
+          VitalisCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _item(cs, Icons.local_hospital_outlined, 'Pay at clinic',
+                    'Book now, pay when you arrive. Status stays Unpaid until the desk or you mark it paid.'),
+                const Divider(height: 28),
+                _item(cs, Icons.credit_card_rounded, 'Card in the app',
+                    'Confirms the visit as Paid in hospital records. Card numbers are never stored in this app.'),
+                const Divider(height: 28),
+                _item(cs, Icons.account_balance_wallet_outlined, 'Mobile wallet',
+                    'Same as pay-now for JazzCash / EasyPaisa style confirmation.'),
+              ],
+            ),
+          ),
+        ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: AppSpacing.screenPadding,
+    );
+  }
+
+  Widget _item(ColorScheme cs, IconData icon, String title, String body) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: cs.primary),
+        const SizedBox(width: 12),
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Billing & Insurance',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ).animate().fadeIn(duration: 400.ms),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Manage your payment methods and insurance information securely.',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 14,
-                ),
-              ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
-              const SizedBox(height: AppSpacing.xl),
-
-              // Coming Soon Section
-              VitalisCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.lg),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withAlpha(26),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.credit_card_rounded,
-                        color: theme.colorScheme.primary,
-                        size: 40,
-                      ),
-                    ).animate().scale(
-                          begin: const Offset(0.8, 0.8),
-                          end: const Offset(1, 1),
-                          duration: 500.ms,
-                          curve: Curves.easeOutBack,
-                        ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      'Coming Soon',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ).animate(delay: 100.ms).fadeIn(duration: 400.ms),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Payment and insurance management features are currently under development.\nWe will keep your information secure and up to date.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 14,
-                        height: 1.6,
-                      ),
-                    ).animate(delay: 150.ms).fadeIn(duration: 400.ms),
-                  ],
-                ),
-              ).animate(delay: 300.ms).fadeIn(duration: 500.ms),
+              Text(title, style: TextStyle(fontWeight: FontWeight.w800, color: cs.onSurface)),
+              const SizedBox(height: 4),
+              Text(body, style: TextStyle(color: cs.onSurfaceVariant, height: 1.45, fontSize: 13)),
             ],
           ),
         ),
-      ),
+      ],
     );
   }
 }

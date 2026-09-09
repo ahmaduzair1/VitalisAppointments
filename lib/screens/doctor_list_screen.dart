@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../core/constants/page_transitions.dart';
 import '../widgets/doctor_card.dart';
+import '../widgets/shimmer_loading.dart';
 import 'doctor_profile_screen.dart';
 
 class DoctorListScreen extends StatefulWidget {
@@ -16,7 +17,17 @@ class DoctorListScreen extends StatefulWidget {
 class _DoctorListScreenState extends State<DoctorListScreen> {
   final _searchController = TextEditingController();
   int _selectedFilter = 0;
-  final List<String> _filters = ['All', 'Cardiology', 'Dermatology', 'Neurology', 'Orthopedic', 'Pediatric'];
+  final List<String> _filters = [
+    'All',
+    'General',
+    'Cardiology',
+    'Dentist',
+    'Gynecologist',
+    'ENT',
+    'Psychiatrist',
+    'Pediatric',
+    'Orthopedic',
+  ];
 
   @override
   void dispose() {
@@ -65,12 +76,12 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   color: cs.surface,
                   borderRadius: BorderRadius.circular(24),
                   border: theme.brightness == Brightness.dark
-                      ? Border.all(color: cs.outline.withOpacity(0.3))
+                      ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                       : null,
                   boxShadow: theme.brightness == Brightness.light
                       ? [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -130,7 +141,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? cs.primary
-                                : cs.onSurface.withOpacity(0.04),
+                                : cs.onSurface.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(20),
                             border: isSelected
                                 ? null
@@ -163,7 +174,11 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                 builder: (context, snapshot) {
                   // 1. Loading
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                      itemCount: 6,
+                      itemBuilder: (context, index) => ShimmerLoading.doctorCard(),
+                    );
                   }
 
                   // 2. Error
@@ -192,7 +207,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                         name.contains(searchQ) || spec.contains(searchQ);
 
                     final matchesFilter = _selectedFilter == 0 ||
-                        spec.contains(_filters[_selectedFilter].toLowerCase());
+                        _matchesFilter(spec, _filters[_selectedFilter]);
 
                     return matchesSearch && matchesFilter;
                   }).toList();
@@ -257,6 +272,29 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     );
   }
 
+  bool _matchesFilter(String spec, String filter) {
+    switch (filter) {
+      case 'Cardiology':
+        return spec.contains('cardio');
+      case 'Dentist':
+        return spec.contains('dentist');
+      case 'Gynecologist':
+        return spec.contains('gynecol');
+      case 'ENT':
+        return spec.contains('ent');
+      case 'Psychiatrist':
+        return spec.contains('psychiatr');
+      case 'Pediatric':
+        return spec.contains('pediatr');
+      case 'Orthopedic':
+        return spec.contains('ortho');
+      case 'General':
+        return spec.contains('general');
+      default:
+        return spec.contains(filter.toLowerCase());
+    }
+  }
+
   // Helper widget to keep the tree clean
   Widget _buildEmptyState(ColorScheme cs, String title, String subtitle) {
     return Center(
@@ -264,7 +302,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.search_off_rounded,
-              size: 64, color: cs.onSurfaceVariant.withOpacity(0.3)),
+              size: 64, color: cs.onSurfaceVariant.withValues(alpha: 0.3)),
           const SizedBox(height: 16),
           Text(
             title,
@@ -278,7 +316,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           Text(
             subtitle,
             style: TextStyle(
-              color: cs.onSurfaceVariant.withOpacity(0.7),
+              color: cs.onSurfaceVariant.withValues(alpha: 0.7),
               fontSize: 14,
             ),
           ),

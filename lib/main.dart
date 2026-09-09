@@ -2,20 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
-import 'upload.dart';
-import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/main_tab_navigator.dart';
-import 'services/auth_service.dart';
+import 'screens/auth_wrapper.dart';
+import 'services/reminder_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
+  try {
+    await ReminderService.instance.init();
+  } catch (e) {
+    debugPrint('Reminder init skipped: $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -27,37 +32,33 @@ void main() async {
 }
 
 class VitalisApp extends StatelessWidget {
-  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.system);
+  static final ValueNotifier<ThemeMode> themeNotifier =
+      ValueNotifier(ThemeMode.system);
 
   const VitalisApp({super.key});
 
-  // ── Design tokens ─────────────────────────────────────────
-  static const Color _primary = Color(0xFF2563EB);
-  static const Color _primaryDark = Color(0xFF3B82F6);
+  static const Color _primary = Color(0xFF0F766E);
+  static const Color _primaryDark = Color(0xFF2DD4BF);
 
-  // Light
-  static const Color _bgLight = Color(0xFFF9FAFB);
+  static const Color _bgLight = Color(0xFFF4F7F7);
   static const Color _surfaceLight = Color(0xFFFFFFFF);
-  static const Color _textPrimaryLight = Color(0xFF111827);
-  static const Color _textSecondaryLight = Color(0xFF6B7280);
+  static const Color _textPrimaryLight = Color(0xFF134E4A);
+  static const Color _textSecondaryLight = Color(0xFF5B6B6A);
 
-  // Dark
-  static const Color _bgDark = Color(0xFF0F172A);
-  static const Color _surfaceDark = Color(0xFF1E293B);
-  static const Color _textPrimaryDark = Color(0xFFF9FAFB);
-  static const Color _textSecondaryDark = Color(0xFF94A3B8);
+  static const Color _bgDark = Color(0xFF0B1414);
+  static const Color _surfaceDark = Color(0xFF14201F);
+  static const Color _textPrimaryDark = Color(0xFFF0FDFA);
+  static const Color _textSecondaryDark = Color(0xFF94A8A6);
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
-      builder: (_, ThemeMode currentMode, __) {
+      builder: (_, currentMode, _) {
         return MaterialApp(
           title: 'Vitalis Appointments',
           debugShowCheckedModeBanner: false,
           themeMode: currentMode,
-
-          // ── Light Theme ──────────────────────────────────
           theme: ThemeData(
             brightness: Brightness.light,
             useMaterial3: true,
@@ -70,10 +71,11 @@ class VitalisApp extends StatelessWidget {
               surface: _surfaceLight,
               onSurface: _textPrimaryLight,
               onSurfaceVariant: _textSecondaryLight,
-              outline: Color(0xFFE5E7EB),
-              error: Color(0xFFEF4444),
+              outline: Color(0xFFD5E3E1),
+              error: Color(0xFFDC2626),
+              secondary: Color(0xFF0EA5A4),
             ),
-            textTheme: GoogleFonts.interTextTheme(
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(
               ThemeData.light().textTheme,
             ).apply(
               bodyColor: _textPrimaryLight,
@@ -85,9 +87,9 @@ class VitalisApp extends StatelessWidget {
               scrolledUnderElevation: 0,
               centerTitle: true,
               iconTheme: const IconThemeData(color: _textPrimaryLight),
-              titleTextStyle: GoogleFonts.inter(
+              titleTextStyle: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: _textPrimaryLight,
               ),
             ),
@@ -96,35 +98,29 @@ class VitalisApp extends StatelessWidget {
                 backgroundColor: _primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: const Color(0xFFF3F4F6),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              fillColor: const Color(0xFFECF4F3),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: _primary, width: 1.5),
-              ),
-              hintStyle: GoogleFonts.inter(
-                color: _textSecondaryLight.withOpacity(0.6),
-                fontSize: 15,
               ),
             ),
             bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -133,13 +129,13 @@ class VitalisApp extends StatelessWidget {
               unselectedItemColor: _textSecondaryLight,
               type: BottomNavigationBarType.fixed,
               elevation: 0,
-              selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              selectedLabelStyle:
+                  TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle:
+                  TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
-            dividerColor: const Color(0xFFE5E7EB),
+            dividerColor: const Color(0xFFD5E3E1),
           ),
-
-          // ── Dark Theme ───────────────────────────────────
           darkTheme: ThemeData(
             brightness: Brightness.dark,
             useMaterial3: true,
@@ -148,14 +144,15 @@ class VitalisApp extends StatelessWidget {
             cardColor: _surfaceDark,
             colorScheme: const ColorScheme.dark(
               primary: _primaryDark,
-              onPrimary: Colors.white,
+              onPrimary: Color(0xFF042F2E),
               surface: _surfaceDark,
               onSurface: _textPrimaryDark,
               onSurfaceVariant: _textSecondaryDark,
-              outline: Color(0xFF334155),
+              outline: Color(0xFF2A3F3D),
               error: Color(0xFFF87171),
+              secondary: Color(0xFF5EEAD4),
             ),
-            textTheme: GoogleFonts.interTextTheme(
+            textTheme: GoogleFonts.plusJakartaSansTextTheme(
               ThemeData.dark().textTheme,
             ).apply(
               bodyColor: _textPrimaryDark,
@@ -167,46 +164,40 @@ class VitalisApp extends StatelessWidget {
               scrolledUnderElevation: 0,
               centerTitle: true,
               iconTheme: const IconThemeData(color: _textPrimaryDark),
-              titleTextStyle: GoogleFonts.inter(
+              titleTextStyle: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: _textPrimaryDark,
               ),
             ),
             elevatedButtonTheme: ElevatedButtonThemeData(
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryDark,
-                foregroundColor: Colors.white,
+                foregroundColor: const Color(0xFF042F2E),
                 elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                textStyle: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),
             inputDecorationTheme: InputDecorationTheme(
               filled: true,
-              fillColor: const Color(0xFF1E293B),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              fillColor: const Color(0xFF14201F),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF334155)),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFF2A3F3D)),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: Color(0xFF334155)),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFF2A3F3D)),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(color: _primaryDark, width: 1.5),
-              ),
-              hintStyle: GoogleFonts.inter(
-                color: _textSecondaryDark.withOpacity(0.6),
-                fontSize: 15,
               ),
             ),
             bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -215,43 +206,15 @@ class VitalisApp extends StatelessWidget {
               unselectedItemColor: _textSecondaryDark,
               type: BottomNavigationBarType.fixed,
               elevation: 0,
-              selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-              unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              selectedLabelStyle:
+                  TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle:
+                  TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
             ),
-            dividerColor: const Color(0xFF334155),
+            dividerColor: const Color(0xFF2A3F3D),
           ),
-
-          // Home points to our AuthWrapper
           home: const AuthWrapper(),
         );
-      },
-    );
-  }
-}
-
-// ── The Traffic Cop (Auth Wrapper) ───────────────────────
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final authService = AuthService();
-
-    return StreamBuilder<User?>(
-      stream: authService.authStateChanges,
-      builder: (context, snapshot) {
-        // 1. While checking Firebase, show the Splash Screen
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen();
-        }
-
-        // 2. If we have user data, they are logged in! Send to Dashboard.
-        if (snapshot.hasData) {
-          return const MainTabNavigator();
-        }
-
-        // 3. Otherwise, they are logged out. Send to Login Screen.
-        return const LoginScreen();
       },
     );
   }

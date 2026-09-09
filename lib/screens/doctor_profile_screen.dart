@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../core/formatters.dart';
 import '../core/constants/page_transitions.dart';
-import '../core/mock_data.dart';
+import '../core/schedule.dart';
+import '../services/appointment_service.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/time_slot_chip.dart';
 import '../widgets/vitalis_button.dart';
@@ -40,7 +42,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -58,25 +60,29 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                 fit: StackFit.expand,
                 children: [
                   Hero(
-                    tag: 'doctor_avatar_${doc['name'] ?? 'Unknown'}',
-                    child: Container(
-                      decoration: BoxDecoration(
-                        image: (doc['image'] as String?)?.isNotEmpty == true
-                            ? DecorationImage(
-                                image: NetworkImage(doc['image']),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        color: cs.primary.withValues(alpha: 0.1),
-                      ),
-                      child: (doc['image'] as String?)?.isNotEmpty != true
-                          ? Center(
+                    tag: 'doctor_avatar_${doc['id'] ?? doc['name'] ?? 'Unknown'}',
+                    child: (doc['image'] as String?)?.isNotEmpty == true
+                        ? Image.network(
+                            doc['image'] as String,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                ColoredBox(
+                              color: cs.primary.withValues(alpha: 0.1),
+                              child: Center(
+                                child: Icon(Icons.person_rounded,
+                                    size: 80,
+                                    color: cs.primary.withValues(alpha: 0.5)),
+                              ),
+                            ),
+                          )
+                        : ColoredBox(
+                            color: cs.primary.withValues(alpha: 0.1),
+                            child: Center(
                               child: Icon(Icons.person_rounded,
                                   size: 80,
                                   color: cs.primary.withValues(alpha: 0.5)),
-                            )
-                          : null,
-                    ),
+                            ),
+                          ),
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -85,7 +91,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          theme.scaffoldBackgroundColor.withOpacity(0.3),
+                          theme.scaffoldBackgroundColor.withValues(alpha: 0.3),
                           theme.scaffoldBackgroundColor,
                         ],
                         stops: const [0.0, 0.6, 1.0],
@@ -236,35 +242,51 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
 
                     const SizedBox(height: 12),
 
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children:
-                      List.generate(MockData.morningSlots.length, (i) {
-                        return TimeSlotChip(
-                          time: MockData.morningSlots[i],
-                          isSelected: _selectedTimeIndex == i,
-                          onTap: () =>
-                              setState(() => _selectedTimeIndex = i),
+                    StreamBuilder<Set<String>>(
+                      stream: AppointmentService.instance.watchTakenTimes(
+                        doctorId: '${doc['id'] ?? ''}',
+                        date: VisitSchedule.formatDate(DateTime.now()),
+                      ),
+                      builder: (context, snapshot) {
+                        final taken = snapshot.data ?? {};
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(VisitSchedule.morningSlots.length, (i) {
+                                final time = VisitSchedule.morningSlots[i];
+                                final takenSlot = taken.contains(time);
+                                return TimeSlotChip(
+                                  time: time,
+                                  isSelected: _selectedTimeIndex == i,
+                                  isDisabled: takenSlot,
+                                  isTaken: takenSlot,
+                                  onTap: () => setState(() => _selectedTimeIndex = i),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: List.generate(VisitSchedule.afternoonSlots.length, (i) {
+                                final index = VisitSchedule.morningSlots.length + i;
+                                final time = VisitSchedule.afternoonSlots[i];
+                                final takenSlot = taken.contains(time);
+                                return TimeSlotChip(
+                                  time: time,
+                                  isSelected: _selectedTimeIndex == index,
+                                  isDisabled: takenSlot,
+                                  isTaken: takenSlot,
+                                  onTap: () => setState(() => _selectedTimeIndex = index),
+                                );
+                              }),
+                            ),
+                          ],
                         );
-                      }),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children:
-                      List.generate(MockData.afternoonSlots.length, (i) {
-                        final index = MockData.morningSlots.length + i;
-                        return TimeSlotChip(
-                          time: MockData.afternoonSlots[i],
-                          isSelected: _selectedTimeIndex == index,
-                          onTap: () =>
-                              setState(() => _selectedTimeIndex = index),
-                        );
-                      }),
+                      },
                     ),
 
                     const SizedBox(height: 100), // padding for bottom bar
@@ -283,7 +305,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           color: theme.cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
@@ -301,7 +323,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                     style: TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   Text(
-                    '\$${doc['fee'] ?? 0}',
+                    Formatters.fee(doc['fee']),
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ],

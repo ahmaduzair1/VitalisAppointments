@@ -3,8 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/constants/page_transitions.dart';
 import '../widgets/vitalis_button.dart';
 import '../services/auth_service.dart';
-import 'main_tab_navigator.dart';
 import 'registration_screen.dart';
+import 'staff_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -57,7 +57,8 @@ class _LoginScreenState extends State<LoginScreen> {
     String? resetMessage;
     bool isError = false;
 
-    await showDialog(
+    try {
+      await showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -86,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           : const Color(0xFFF3F4F6),
                       borderRadius: BorderRadius.circular(14),
                       border: Theme.of(context).brightness == Brightness.dark
-                          ? Border.all(color: cs.outline.withOpacity(0.3))
+                          ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                           : null,
                     ),
                     child: TextField(
@@ -172,6 +173,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       },
     );
+    } finally {
+      resetEmailController.dispose();
+    }
   }
 
   @override
@@ -200,12 +204,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [cs.primary, cs.primary.withOpacity(0.8)],
+                        colors: [cs.primary, cs.primary.withValues(alpha: 0.8)],
                       ),
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: cs.primary.withOpacity(0.25),
+                          color: cs.primary.withValues(alpha: 0.25),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -259,12 +263,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(24),
                     border: theme.brightness == Brightness.dark
-                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                         : null,
                     boxShadow: theme.brightness == Brightness.light
                         ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -323,12 +327,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     color: cs.surface,
                     borderRadius: BorderRadius.circular(24),
                     border: theme.brightness == Brightness.dark
-                        ? Border.all(color: cs.outline.withOpacity(0.3))
+                        ? Border.all(color: cs.outline.withValues(alpha: 0.3))
                         : null,
                     boxShadow: theme.brightness == Brightness.light
                         ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
@@ -381,10 +385,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.error.withOpacity(0.08),
+                        color: Theme.of(context).colorScheme.error.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.error.withOpacity(0.18),
+                          color: Theme.of(context).colorScheme.error.withValues(alpha: 0.18),
                         ),
                       ),
                       child: Row(
@@ -419,20 +423,13 @@ class _LoginScreenState extends State<LoginScreen> {
                           _emailController.text.trim(),
                           _passwordController.text.trim()
                       );
-
-                      if (!mounted) return;
-
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        PageTransitions.fadeSlide(const MainTabNavigator()),
-                            (route) => false,
-                      );
                     } catch (e) {
                       if (!mounted) return;
                       setState(() {
                         _errorMessage = e.toString().replaceAll('Exception: ', '');
-                        _isLoading = false;
                       });
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
                     }
                   },
                 ),
@@ -476,11 +473,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (!mounted) return;
 
                       if (user != null) {
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          PageTransitions.fadeSlide(const MainTabNavigator()),
-                              (route) => false,
-                        );
+                        // AuthWrapper switches to the right home (patient vs admin).
                       } else {
                         // User canceled the sign in popup
                         setState(() {
@@ -491,9 +484,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (!mounted) return;
                       setState(() {
                         _errorMessage = "Google Sign-In failed. Check configuration.";
-                        _isLoading = false;
                       });
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
                     }
+                  },
+                ),
+
+                const SizedBox(height: 12),
+                VitalisButton(
+                  label: 'Hospital staff',
+                  variant: VitalisButtonVariant.secondary,
+                  icon: Icons.local_hospital_outlined,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      PageTransitions.fadeSlide(const StaffLoginScreen()),
+                    );
                   },
                 ),
 
@@ -509,7 +516,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(color: cs.onSurfaceVariant),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.pushReplacement(
+                        onTap: () => Navigator.push(
                           context,
                           PageTransitions.fadeSlide(const RegistrationScreen()),
                         ),
